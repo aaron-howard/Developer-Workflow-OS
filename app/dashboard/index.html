@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Developer Workflow OS</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #121b2d;
+        --panel-alt: #18243a;
+        --text: #ebf1ff;
+        --muted: #9fb3d9;
+        --accent: #7dd3fc;
+        --success: #34d399;
+        --warning: #fbbf24;
+        --danger: #f87171;
+        --border: rgba(255,255,255,0.08);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Arial, sans-serif;
+      }
+
+      .shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 32px 20px 48px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+      }
+
+      .title {
+        font-size: 2rem;
+        font-weight: 700;
+      }
+
+      .badge {
+        background: rgba(125, 211, 252, 0.12);
+        border: 1px solid var(--border);
+        color: var(--accent);
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 0.8rem;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 18px;
+      }
+
+      .card h3 {
+        margin: 0 0 12px;
+        font-size: 1rem;
+      }
+
+      .metric {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      button {
+        background: var(--panel-alt);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+
+      button.primary {
+        background: rgba(125, 211, 252, 0.14);
+        color: var(--accent);
+      }
+
+      ul {
+        padding-left: 18px;
+        margin: 12px 0 0;
+        color: var(--muted);
+      }
+
+      li + li { margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="topbar">
+        <div class="title">Developer Workflow OS</div>
+        <div class="badge">MVP command centre</div>
+      </div>
+
+      <div class="grid">
+        <section class="card">
+          <h3>Active work</h3>
+          <div class="metric">6</div>
+          <div class="muted">Open tasks and active features</div>
+        </section>
+
+        <section class="card">
+          <h3>Release readiness</h3>
+          <div class="metric" style="color: var(--success);">86%</div>
+          <div class="muted">Stable, minor blockers</div>
+        </section>
+
+        <section class="card">
+          <h3>Recent artifacts</h3>
+          <div class="metric">12</div>
+          <div class="muted">Summaries and digests generated</div>
+        </section>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <h3>Quick actions</h3>
+        <div class="actions">
+          <button class="primary">Summarize branch</button>
+          <button>Find feature files</button>
+          <button>Draft release notes</button>
+          <button>Run weekly digest</button>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top: 20px;">
+        <section class="card">
+          <h3>Workspace map</h3>
+          <ul>
+            <li>app/dashboard</li>
+            <li>app/server</li>
+            <li>memory/routers</li>
+            <li>memory/artifacts</li>
+            <li>skills</li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <h3>Current priorities</h3>
+          <ul>
+            <li>Index repo memory</li>
+            <li>Build feature drill-down</li>
+            <li>Draft branch summary flow</li>
+            <li>Prepare release checks</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>
