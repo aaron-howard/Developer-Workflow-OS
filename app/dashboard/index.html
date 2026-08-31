@@ -109,6 +109,67 @@
       }
 
       li + li { margin-top: 8px; }
+
+      .loading {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .error {
+        color: var(--danger);
+        font-size: 0.9rem;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+      }
+
+      .modal.open {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-content {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+      }
+
+      .modal-close {
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 1.5rem;
+        padding: 0;
+      }
+
+      .modal-close:hover {
+        color: var(--text);
+      }
     </style>
   </head>
   <body>
@@ -120,56 +181,183 @@
 
       <div class="grid">
         <section class="card">
-          <h3>Active work</h3>
-          <div class="metric">6</div>
-          <div class="muted">Open tasks and active features</div>
-        </section>
-
-        <section class="card">
           <h3>Release readiness</h3>
-          <div class="metric" style="color: var(--success);">86%</div>
-          <div class="muted">Stable, minor blockers</div>
+          <div class="metric" id="release-score" style="color: var(--success);">—</div>
+          <div class="muted" id="release-status">Loading...</div>
         </section>
 
         <section class="card">
-          <h3>Recent artifacts</h3>
-          <div class="metric">12</div>
-          <div class="muted">Summaries and digests generated</div>
+          <h3>Recent commits</h3>
+          <div class="metric" id="commit-count">—</div>
+          <div class="muted" id="commit-status">Loading...</div>
+        </section>
+
+        <section class="card">
+          <h3>Repository</h3>
+          <div class="metric" id="repo-name">—</div>
+          <div class="muted" id="repo-status">Loading...</div>
         </section>
       </div>
 
       <div class="card" style="margin-top: 20px;">
         <h3>Quick actions</h3>
         <div class="actions">
-          <button class="primary">Summarize branch</button>
-          <button>Find feature files</button>
-          <button>Draft release notes</button>
-          <button>Run weekly digest</button>
+          <button class="primary" onclick="showWeeklyDigest()">Weekly digest</button>
+          <button onclick="showReleaseReadiness()">Release readiness</button>
+          <button onclick="showRepoIndex()">Workspace map</button>
         </div>
       </div>
+    </div>
 
-      <div class="grid" style="margin-top: 20px;">
-        <section class="card">
-          <h3>Workspace map</h3>
-          <ul>
-            <li>app/dashboard</li>
-            <li>app/server</li>
-            <li>memory/routers</li>
-            <li>memory/artifacts</li>
-            <li>skills</li>
-          </ul>
-        </section>
-
-        <section class="card">
-          <h3>Current priorities</h3>
-          <ul>
-            <li>Index repo memory</li>
-            <li>Build feature drill-down</li>
-            <li>Draft branch summary flow</li>
-            <li>Prepare release checks</li>
-          </ul>
-        </section>
+    <!-- Modal for displaying details -->
+    <div class="modal" id="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modal-title">Details</h2>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div id="modal-body"></div>
       </div>
     </div>
+
+    <script>
+      const API_BASE = "http://localhost:5000";
+
+      function showError(message) {
+        console.error(message);
+      }
+
+      function openModal(title, content) {
+        document.getElementById("modal-title").innerText = title;
+        document.getElementById("modal-body").innerHTML = content;
+        document.getElementById("modal").classList.add("open");
+      }
+
+      function closeModal() {
+        document.getElementById("modal").classList.remove("open");
+      }
+
+      async function loadDashboard() {
+        try {
+          const response = await fetch(`${API_BASE}/api/digest/weekly`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          document.getElementById("release-score").innerText = `${data.release_score}%`;
+          document.getElementById("release-status").innerText =
+            `Status: ${data.release_status}` + (data.blockers.length > 0 ? ` (${data.blockers.length} blockers)` : "");
+          document.getElementById("commit-count").innerText = data.total_commits || "0";
+          document.getElementById("commit-status").innerText = "Total commits on main";
+          document.getElementById("repo-name").innerText = data.repo_name || "—";
+          document.getElementById("repo-status").innerText = `${data.branch_count} branches`;
+        } catch (error) {
+          showError(`Failed to load dashboard: ${error.message}`);
+          document.getElementById("release-status").innerText = "Failed to load";
+          document.getElementById("commit-status").innerText = "Failed to load";
+          document.getElementById("repo-status").innerText = "Failed to load";
+        }
+      }
+
+      async function showWeeklyDigest() {
+        try {
+          const response = await fetch(`${API_BASE}/api/digest/weekly`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<pre style="color: var(--muted); font-size: 0.85rem; overflow-x: auto;">${escapeHtml(data.summary)}</pre>`;
+          if (data.blockers.length > 0) {
+            html += `<h4>Blockers:</h4><ul>`;
+            data.blockers.forEach(b => {
+              html += `<li>${escapeHtml(b)}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          openModal("Weekly digest", html);
+        } catch (error) {
+          openModal("Weekly digest", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showReleaseReadiness() {
+        try {
+          const response = await fetch(`${API_BASE}/api/release/readiness`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `
+            <p><strong>Score:</strong> ${data.score}/100</p>
+            <p><strong>Status:</strong> <span style="color: ${data.status === 'ready' ? 'var(--success)' : data.status === 'watch' ? 'var(--warning)' : 'var(--danger)'}">${data.status}</span></p>
+            <pre style="color: var(--muted); font-size: 0.85rem; overflow-x: auto;">${escapeHtml(data.summary)}</pre>
+          `;
+
+          if (data.blockers.length > 0) {
+            html += `<h4>Blockers:</h4><ul>`;
+            data.blockers.forEach(b => {
+              html += `<li>${escapeHtml(b)}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          openModal("Release readiness", html);
+        } catch (error) {
+          openModal("Release readiness", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showRepoIndex() {
+        try {
+          const response = await fetch(`${API_BASE}/api/repo/index`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Repository: ${escapeHtml(data.repo_name)}</h4>`;
+
+          if (data.areas && data.areas.length > 0) {
+            html += `<h5>Areas:</h5><ul>`;
+            data.areas.forEach(a => {
+              html += `<li>${escapeHtml(a.name)} <span style="color: var(--muted);">(${escapeHtml(a.path)})</span></li>`;
+            });
+            html += `</ul>`;
+          }
+
+          if (data.key_files && data.key_files.length > 0) {
+            html += `<h5>Key files:</h5><ul>`;
+            data.key_files.forEach(f => {
+              html += `<li><code style="color: var(--accent);">${escapeHtml(f)}</code></li>`;
+            });
+            html += `</ul>`;
+          }
+
+          openModal("Workspace map", html);
+        } catch (error) {
+          openModal("Workspace map", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      function escapeHtml(text) {
+        const map = {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+      }
+
+      // Load dashboard on page load
+      window.addEventListener("DOMContentLoaded", loadDashboard);
+
+      // Refresh every 30 seconds
+      setInterval(loadDashboard, 30000);
+
+      // Close modal on background click
+      document.getElementById("modal").addEventListener("click", function(e) {
+        if (e.target === this) {
+          closeModal();
+        }
+      });
+    </script>
   </body>
 </html>
