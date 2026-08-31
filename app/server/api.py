@@ -3,15 +3,18 @@ from __future__ import annotations
 from flask import Flask, jsonify, request
 
 from app.server.branch_summary import summarize_branch
+from app.server.command_centre import CommandCentre
 from app.server.release_readiness import assess_release_readiness
 from app.server.repo_memory import build_feature_context, index_repo
 from app.server.weekly_digest import generate_weekly_digest
 
 
-def create_app(repo_path: str = ".") -> Flask:
+def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config["REPO_PATH"] = repo_path
+    app.config["MEMORY_PATH"] = memory_path
+    app.centre = CommandCentre(repo_path=repo_path, memory_path=memory_path)
 
     @app.route("/api/repo/index", methods=["GET"])
     def repo_index():
@@ -64,6 +67,71 @@ def create_app(repo_path: str = ".") -> Flask:
         try:
             result = generate_weekly_digest(app.config["REPO_PATH"], base)
             return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/artifacts", methods=["GET"])
+    def list_artifacts():
+        """List stored artifacts, optionally filtered by type."""
+        artifact_type = request.args.get("type", None)
+        tag = request.args.get("tag", None)
+        limit = request.args.get("limit", 50, type=int)
+        try:
+            artifacts = app.centre.list_artifacts(
+                artifact_type=artifact_type, tag=tag, limit=limit
+            )
+            return jsonify({"artifacts": artifacts}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/artifacts", methods=["POST"])
+    def store_artifact():
+        """Store a new artifact."""
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Request body must be JSON"}), 400
+
+        name = data.get("name")
+        artifact_type = data.get("type")
+        content = data.get("content")
+        tags = data.get("tags", [])
+
+        if not name or not artifact_type or content is None:
+            return jsonify({"error": "name, type, and content are required"}), 400
+
+        try:
+            result = app.centre.store_artifact(
+                name=name, artifact_type=artifact_type, content=content, tags=tags
+            )
+            return jsonify(result), 201
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/artifacts/<artifact_id>", methods=["GET"])
+    def get_artifact_by_id(artifact_id):
+        """Retrieve a specific artifact by ID."""
+        try:
+            artifact = app.centre.get_artifact(artifact_id)
+            if not artifact:
+                return jsonify({"error": "Artifact not found"}), 404
+            return jsonify(artifact), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/artifacts/latest", methods=["GET"])
+    def get_latest():
+        """Retrieve the latest artifact of a given type."""
+        artifact_type = request.args.get("type", None)
+        if not artifact_type:
+            return jsonify({"error": "type query parameter is required"}), 400
+        try:
+            artifact = app.centre.get_latest_artifact(artifact_type=artifact_type)
+            if not artifact:
+                return (
+                    jsonify({"error": f"No artifacts of type {artifact_type}"}),
+                    404,
+                )
+            return jsonify(artifact), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 

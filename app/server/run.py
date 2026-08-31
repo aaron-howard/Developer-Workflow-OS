@@ -61,8 +61,14 @@ def main():
     print("  GET  /api/release/readiness?base=main")
     print("  GET  /api/digest/weekly?base=main")
     print()
+    print("Artifact management:")
+    print("  GET  /api/artifacts?type=<type>&tag=<tag>")
+    print("  POST /api/artifacts (store artifact)")
+    print("  GET  /api/artifacts/<id>")
+    print("  GET  /api/artifacts/latest?type=<type>")
+    print()
 
-    app = create_app(repo_path=str(repo_path))
+    app = create_app(repo_path=str(repo_path), memory_path=str(repo_path / ".memory"))
     app.run(host=args.host, port=args.port, debug=args.debug)
 
 
