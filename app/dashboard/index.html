@@ -205,6 +205,8 @@
           <button class="primary" onclick="showWeeklyDigest()">Weekly digest</button>
           <button onclick="showReleaseReadiness()">Release readiness</button>
           <button onclick="showRepoIndex()">Workspace map</button>
+          <button onclick="showRoutineStatus()">Routine status</button>
+          <button onclick="showPlanStatus()">Plan status</button>
         </div>
       </div>
     </div>
@@ -332,6 +334,58 @@
           openModal("Workspace map", html);
         } catch (error) {
           openModal("Workspace map", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showRoutineStatus() {
+        try {
+          const response = await fetch(`${API_BASE}/api/routines`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Registered routines</h4><ul>`;
+          data.routines.forEach(r => {
+            html += `<li><strong>${escapeHtml(r.name)}</strong> — ${escapeHtml(r.interval)}${r.description ? ` — ${escapeHtml(r.description)}` : ""}</li>`;
+          });
+          html += `</ul>`;
+
+          openModal("Routine status", html);
+        } catch (error) {
+          openModal("Routine status", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showPlanStatus() {
+        try {
+          const response = await fetch(`${API_BASE}/api/plan/status`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          const statusColor = data.status === 'complete' ? 'var(--success)' : 'var(--warning)';
+          let html = `
+            <p><strong>Status:</strong> <span style="color: ${statusColor}">${escapeHtml(data.status)}</span></p>
+            <p><strong>Sections checked:</strong> ${escapeHtml(String(data.sections_checked))}</p>
+          `;
+
+          if (data.coverage) {
+            html += `<h4>Coverage:</h4><ul>`;
+            Object.entries(data.coverage).forEach(([name, value]) => {
+              html += `<li><strong>${escapeHtml(name)}</strong>: ${value ? 'implemented' : 'pending'}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          if (data.missing && data.missing.length > 0) {
+            html += `<h4>Missing:</h4><ul>`;
+            data.missing.forEach(item => {
+              html += `<li>${escapeHtml(item)}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          openModal("Plan status", html);
+        } catch (error) {
+          openModal("Plan status", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
         }
       }
 

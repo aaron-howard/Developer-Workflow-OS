@@ -4,8 +4,10 @@ from flask import Flask, jsonify, request
 
 from app.server.branch_summary import summarize_branch
 from app.server.command_centre import CommandCentre
+from app.server.plan_alignment import plan_coverage_report
 from app.server.release_readiness import assess_release_readiness
 from app.server.repo_memory import build_feature_context, index_repo
+from app.server.routine_scheduler import RoutineScheduler
 from app.server.weekly_digest import generate_weekly_digest
 
 
@@ -15,6 +17,9 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
     app.config["REPO_PATH"] = repo_path
     app.config["MEMORY_PATH"] = memory_path
     app.centre = CommandCentre(repo_path=repo_path, memory_path=memory_path)
+    app.scheduler = RoutineScheduler(repo_path=repo_path, memory_path=memory_path)
+    app.scheduler.install_default_routines()
+    app.scheduler.run_due_routines()
 
     @app.route("/api/repo/index", methods=["GET"])
     def repo_index():
@@ -67,6 +72,34 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
         try:
             result = generate_weekly_digest(app.config["REPO_PATH"], base)
             return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/plan/status", methods=["GET"])
+    def plan_status():
+        """Return the plan coverage summary for the dashboard widget."""
+        try:
+            return jsonify(plan_coverage_report()), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/routines", methods=["GET"])
+    def list_routines():
+        """List registered scheduler routines."""
+        try:
+            routines = app.scheduler.list_routines()
+            return jsonify({"routines": routines}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/routines/<routine_name>/run", methods=["POST"])
+    def run_routine(routine_name):
+        """Execute a registered routine and record its result as an artifact."""
+        try:
+            result = app.scheduler.run_routine(routine_name)
+            return jsonify(result), 200
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 404
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
