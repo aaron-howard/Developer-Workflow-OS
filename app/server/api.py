@@ -7,6 +7,8 @@ from flask import Flask, jsonify, request, send_file
 from app.server.branch_summary import summarize_branch
 from app.server.command_centre import CommandCentre
 from app.server.plan_alignment import plan_coverage_report
+from app.server.implementation_checklist import generate_implementation_checklist
+from app.server.issue_mapping import map_issue_to_code
 from app.server.release_notes import generate_release_notes
 from app.server.release_readiness import assess_release_readiness
 from app.server.repo_memory import build_feature_context, index_repo
@@ -80,6 +82,30 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
         base = request.args.get("base", "main")
         try:
             result = generate_release_notes(app.config["REPO_PATH"], base)
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/feature/checklist", methods=["GET"])
+    def feature_checklist():
+        """Return an implementation checklist for a feature request."""
+        feature = request.args.get("feature", "")
+        if not feature:
+            return jsonify({"error": "feature query parameter is required"}), 400
+        try:
+            result = generate_implementation_checklist(app.config["REPO_PATH"], feature)
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/issue/map", methods=["GET"])
+    def issue_map():
+        """Map an issue description to the code that will need to be modified."""
+        issue = request.args.get("issue", "")
+        if not issue:
+            return jsonify({"error": "issue query parameter is required"}), 400
+        try:
+            result = map_issue_to_code(app.config["REPO_PATH"], issue)
             return jsonify(result), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
