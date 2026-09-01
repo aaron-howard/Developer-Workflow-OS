@@ -7,6 +7,7 @@ from flask import Flask, jsonify, request, send_file
 from app.server.branch_summary import summarize_branch
 from app.server.command_centre import CommandCentre
 from app.server.plan_alignment import plan_coverage_report
+from app.server.release_notes import generate_release_notes
 from app.server.release_readiness import assess_release_readiness
 from app.server.repo_memory import build_feature_context, index_repo
 from app.server.routine_scheduler import RoutineScheduler
@@ -69,6 +70,16 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
         base = request.args.get("base", "main")
         try:
             result = assess_release_readiness(app.config["REPO_PATH"], base)
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/release/notes", methods=["GET"])
+    def release_notes():
+        """Return a draft release note summary for the current repo state."""
+        base = request.args.get("base", "main")
+        try:
+            result = generate_release_notes(app.config["REPO_PATH"], base)
             return jsonify(result), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
