@@ -17,6 +17,11 @@ from app.server.implementation_checklist import generate_implementation_checklis
 from app.server.issue_mapping import map_issue_to_code
 from app.server.release_notes import generate_release_notes
 from app.server.release_readiness import assess_release_readiness
+from app.server.sprint_recap import (
+    generate_sprint_recap,
+    validate_feature_parity,
+    generate_project_snapshot,
+)
 from app.server.repo_memory import build_feature_context, index_repo
 from app.server.routine_scheduler import RoutineScheduler
 from app.server.weekly_digest import generate_weekly_digest
@@ -183,6 +188,33 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
             return jsonify({"error": "routine parameter is required"}), 400
         try:
             result = trigger_routine(app.config["REPO_PATH"], routine)
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/sprint/recap", methods=["GET"])
+    def sprint_recap():
+        """Generate comprehensive sprint recap."""
+        try:
+            result = generate_sprint_recap(app.config["REPO_PATH"], app.config["MEMORY_PATH"])
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/features/parity", methods=["GET"])
+    def features_parity():
+        """Validate feature parity against planned roadmap."""
+        try:
+            result = validate_feature_parity(app.config["REPO_PATH"], app.config["MEMORY_PATH"])
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/project/snapshot", methods=["GET"])
+    def project_snapshot():
+        """Generate project snapshot with consolidated artifacts."""
+        try:
+            result = generate_project_snapshot(app.config["REPO_PATH"], app.config["MEMORY_PATH"])
             return jsonify(result), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
