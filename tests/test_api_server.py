@@ -17,6 +17,19 @@ def test_dashboard_root_serves_the_ui():
     assert b"Developer Workflow OS" in response.data
 
 
+def test_dashboard_root_includes_recent_artifacts_widget():
+    """The dashboard should expose the recent-artifacts command-centre widget."""
+    from app.server.api import create_app
+
+    app = create_app(repo_path=".", memory_path=".memory")
+    client = app.test_client()
+
+    response = client.get("/")
+    assert response.status_code == 200
+    assert b"Recent artifacts" in response.data
+    assert b"/api/artifacts?limit=5" in response.data
+
+
 def test_api_server_exposes_repo_memory_endpoint(tmp_path):
     """Test that the API server can return repo memory data."""
     from app.server.api import create_app

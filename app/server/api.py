@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from flask import Flask, jsonify, request
+from pathlib import Path
+
+from flask import Flask, jsonify, request, send_file
 
 from app.server.branch_summary import summarize_branch
 from app.server.command_centre import CommandCentre
@@ -20,6 +22,12 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
     app.scheduler = RoutineScheduler(repo_path=repo_path, memory_path=memory_path)
     app.scheduler.install_default_routines()
     app.scheduler.run_due_routines()
+
+    @app.route("/", methods=["GET"])
+    def dashboard_root():
+        """Serve the local dashboard UI at the application root."""
+        dashboard_path = Path(__file__).resolve().parents[1] / "dashboard" / "index.html"
+        return send_file(dashboard_path, mimetype="text/html")
 
     @app.route("/api/repo/index", methods=["GET"])
     def repo_index():

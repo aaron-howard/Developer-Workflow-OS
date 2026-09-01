@@ -199,6 +199,14 @@
         </section>
       </div>
 
+      <section class="card" style="margin-top: 20px;">
+        <h3>Recent artifacts</h3>
+        <div id="recent-artifacts" class="muted">Loading recent artifacts...</div>
+        <div style="margin-top: 10px; font-size: 0.8rem; color: var(--muted);">
+          Source: <code>/api/artifacts?limit=5</code>
+        </div>
+      </section>
+
       <div class="card" style="margin-top: 20px;">
         <h3>Quick actions</h3>
         <div class="actions">
@@ -239,6 +247,38 @@
         document.getElementById("modal").classList.remove("open");
       }
 
+      async function loadRecentArtifacts() {
+        try {
+          const response = await fetch(`${API_BASE}/api/artifacts?limit=5`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+          const artifacts = data.artifacts || [];
+
+          const container = document.getElementById("recent-artifacts");
+          if (!artifacts.length) {
+            container.innerHTML = "No recent artifacts yet.";
+            return;
+          }
+
+          const html = artifacts
+            .slice(0, 5)
+            .map((artifact) => `
+              <div style="padding: 8px 0; border-bottom: 1px solid var(--border);">
+                <strong>${escapeHtml(artifact.name || artifact.type || "Artifact")}</strong>
+                <div style="color: var(--muted); font-size: 0.82rem; margin-top: 4px;">
+                  ${escapeHtml(artifact.type || "artifact")} • ${escapeHtml(artifact.created_at ? new Date(artifact.created_at).toLocaleString() : "recent")}
+                </div>
+              </div>
+            `)
+            .join("");
+
+          container.innerHTML = html;
+        } catch (error) {
+          showError(`Failed to load recent artifacts: ${error.message}`);
+          document.getElementById("recent-artifacts").innerHTML = "Unable to load recent artifacts.";
+        }
+      }
+
       async function loadDashboard() {
         try {
           const response = await fetch(`${API_BASE}/api/digest/weekly`);
@@ -258,6 +298,8 @@
           document.getElementById("commit-status").innerText = "Failed to load";
           document.getElementById("repo-status").innerText = "Failed to load";
         }
+
+        await loadRecentArtifacts();
       }
 
       async function showWeeklyDigest() {
