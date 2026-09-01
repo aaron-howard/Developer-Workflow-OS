@@ -217,6 +217,8 @@
           <button onclick="showPlanStatus()">Plan status</button>
           <button onclick="showReleaseStatus()">Release status</button>
           <button onclick="showActionItems()">Action items</button>
+          <button onclick="showArtifactNavigation()">Artifacts</button>
+          <button onclick="showRoutineHistory()">Routine history</button>
         </div>
       </div>
     </div>
@@ -507,6 +509,57 @@
           openModal("Action items", html);
         } catch (error) {
           openModal("Action items", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showArtifactNavigation() {
+        try {
+          const response = await fetch(`${API_BASE}/api/artifacts/navigation`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Artifact Navigation</h4><p>Total artifacts: <strong>${data.total_count}</strong></p>`;
+
+          if (data.artifacts && data.artifacts.length > 0) {
+            html += `<h5>Recent Artifacts:</h5><ul>`;
+            data.artifacts.slice(0, 10).forEach(artifact => {
+              html += `<li><strong>${escapeHtml(artifact.name)}</strong> `;
+              html += `<span style="color: var(--muted);">(${escapeHtml(artifact.type)})</span></li>`;
+            });
+            html += `</ul>`;
+          } else {
+            html += `<p style="color: var(--muted);">No artifacts found.</p>`;
+          }
+
+          openModal("Artifacts", html);
+        } catch (error) {
+          openModal("Artifacts", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showRoutineHistory() {
+        try {
+          const response = await fetch(`${API_BASE}/api/routines/history`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Routine Execution History</h4><p>Total executions: <strong>${data.total_executions}</strong></p>`;
+
+          if (data.routines && data.routines.length > 0) {
+            html += `<h5>Recent Executions:</h5><ul>`;
+            data.routines.slice(0, 10).forEach(routine => {
+              const statusColor = routine.status === 'ok' ? 'var(--success)' : 'var(--warning)';
+              html += `<li><strong>${escapeHtml(routine.routine)}</strong> `;
+              html += `<span style="color: ${statusColor};">${escapeHtml(routine.status)}</span></li>`;
+            });
+            html += `</ul>`;
+          } else {
+            html += `<p style="color: var(--muted);">No routine executions found.</p>`;
+          }
+
+          openModal("Routines", html);
+        } catch (error) {
+          openModal("Routines", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
         }
       }
 

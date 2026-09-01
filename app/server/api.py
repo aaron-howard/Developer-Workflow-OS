@@ -6,6 +6,11 @@ from flask import Flask, jsonify, request, send_file
 
 from app.server.branch_summary import summarize_branch
 from app.server.command_centre import CommandCentre
+from app.server.artifact_navigation import (
+    get_artifacts_navigation,
+    get_routine_history,
+    trigger_routine,
+)
 from app.server.dashboard_integration import get_action_items, get_release_status
 from app.server.plan_alignment import plan_coverage_report
 from app.server.implementation_checklist import generate_implementation_checklist
@@ -147,6 +152,37 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
             return jsonify({"error": "context query parameter is required"}), 400
         try:
             result = get_action_items(app.config["REPO_PATH"], context)
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/artifacts/navigation", methods=["GET"])
+    def artifacts_navigation():
+        """Return artifact navigation structure and history."""
+        try:
+            result = get_artifacts_navigation(app.config["MEMORY_PATH"])
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/routines/history", methods=["GET"])
+    def routines_history():
+        """Return routine execution history."""
+        try:
+            result = get_routine_history(app.config["MEMORY_PATH"])
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/routines/trigger", methods=["POST"])
+    def routines_trigger():
+        """Manually trigger a specific routine."""
+        data = request.get_json() or {}
+        routine = data.get("routine", "")
+        if not routine:
+            return jsonify({"error": "routine parameter is required"}), 400
+        try:
+            result = trigger_routine(app.config["REPO_PATH"], routine)
             return jsonify(result), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
