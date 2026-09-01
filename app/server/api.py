@@ -6,6 +6,7 @@ from flask import Flask, jsonify, request, send_file
 
 from app.server.branch_summary import summarize_branch
 from app.server.command_centre import CommandCentre
+from app.server.dashboard_integration import get_action_items, get_release_status
 from app.server.plan_alignment import plan_coverage_report
 from app.server.implementation_checklist import generate_implementation_checklist
 from app.server.issue_mapping import map_issue_to_code
@@ -125,6 +126,28 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
         """Return the plan coverage summary for the dashboard widget."""
         try:
             return jsonify(plan_coverage_report()), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/dashboard/release-status", methods=["GET"])
+    def dashboard_release_status():
+        """Return combined release readiness and notes for the dashboard."""
+        base = request.args.get("base", "main")
+        try:
+            result = get_release_status(app.config["REPO_PATH"], base)
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/dashboard/action-items", methods=["GET"])
+    def dashboard_action_items():
+        """Return actionable items (checklists and issue mapping) for a context."""
+        context = request.args.get("context", "")
+        if not context:
+            return jsonify({"error": "context query parameter is required"}), 400
+        try:
+            result = get_action_items(app.config["REPO_PATH"], context)
+            return jsonify(result), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 

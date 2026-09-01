@@ -215,6 +215,8 @@
           <button onclick="showRepoIndex()">Workspace map</button>
           <button onclick="showRoutineStatus()">Routine status</button>
           <button onclick="showPlanStatus()">Plan status</button>
+          <button onclick="showReleaseStatus()">Release status</button>
+          <button onclick="showActionItems()">Action items</button>
         </div>
       </div>
     </div>
@@ -428,6 +430,83 @@
           openModal("Plan status", html);
         } catch (error) {
           openModal("Plan status", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showReleaseStatus() {
+        try {
+          const response = await fetch(`${API_BASE}/api/dashboard/release-status`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          const readiness = data.readiness || {};
+          const notes = data.notes || {};
+
+          const statusColor = readiness.status === 'ready' ? 'var(--success)' : readiness.status === 'watch' ? 'var(--warning)' : 'var(--danger)';
+
+          let html = `
+            <h4>Release Readiness</h4>
+            <p><strong>Score:</strong> ${readiness.score}/100</p>
+            <p><strong>Status:</strong> <span style="color: ${statusColor}">${escapeHtml(readiness.status)}</span></p>
+          `;
+
+          if (readiness.blockers && readiness.blockers.length > 0) {
+            html += `<h5>Blockers:</h5><ul>`;
+            readiness.blockers.forEach(b => {
+              html += `<li>${escapeHtml(b)}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          html += `<h4>Release Notes</h4>`;
+          if (notes.summary) {
+            html += `<pre style="color: var(--muted); font-size: 0.85rem; overflow-x: auto; max-height: 400px;">${escapeHtml(notes.summary)}</pre>`;
+          }
+
+          openModal("Release status", html);
+        } catch (error) {
+          openModal("Release status", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showActionItems() {
+        try {
+          const context = prompt("Enter context (e.g., 'auth', 'payment'):");
+          if (!context) return;
+
+          const response = await fetch(`${API_BASE}/api/dashboard/action-items?context=${encodeURIComponent(context)}`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Action Items for "${escapeHtml(context)}"</h4>`;
+
+          if (data.checklists && data.checklists.length > 0) {
+            html += `<h5>Implementation Checklist:</h5><ol>`;
+            data.checklists.forEach(item => {
+              html += `<li>${escapeHtml(item)}</li>`;
+            });
+            html += `</ol>`;
+          }
+
+          if (data.related_files && data.related_files.length > 0) {
+            html += `<h5>Related Files:</h5><ul>`;
+            data.related_files.forEach(file => {
+              html += `<li><code style="color: var(--accent);">${escapeHtml(file)}</code></li>`;
+            });
+            html += `</ul>`;
+          }
+
+          if (data.suggested_checklist && data.suggested_checklist.length > 0) {
+            html += `<h5>Suggested Checklist:</h5><ul>`;
+            data.suggested_checklist.forEach(item => {
+              html += `<li>${escapeHtml(item)}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          openModal("Action items", html);
+        } catch (error) {
+          openModal("Action items", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
         }
       }
 
