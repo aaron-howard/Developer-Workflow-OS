@@ -5,6 +5,18 @@ from pathlib import Path
 import pytest
 
 
+def test_dashboard_root_serves_the_ui():
+    """The app should serve the dashboard HTML at the root URL."""
+    from app.server.api import create_app
+
+    app = create_app(repo_path=".", memory_path=".memory")
+    client = app.test_client()
+
+    response = client.get("/")
+    assert response.status_code == 200
+    assert b"Developer Workflow OS" in response.data
+
+
 def test_api_server_exposes_repo_memory_endpoint(tmp_path):
     """Test that the API server can return repo memory data."""
     from app.server.api import create_app
@@ -59,6 +71,47 @@ def test_api_server_exposes_repo_memory_endpoint(tmp_path):
     assert "repo_name" in data
     assert "areas" in data
     assert "key_files" in data
+
+
+def test_api_server_exposes_feature_context_with_risk_and_docs(tmp_path):
+    """Feature drill-down should surface likely implementation files, tests, docs, and risks."""
+    from app.server.api import create_app
+
+    repo = tmp_path / "feature-drilldown-repo"
+    repo.mkdir()
+
+    subprocess.run(["git", "init", "-b", "main"], cwd=str(repo), capture_output=True, text=True, check=True)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=str(repo), capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=str(repo), capture_output=True, check=True)
+
+    (repo / "README.md").write_text("Login flow documentation\n")
+    (repo / "auth").mkdir()
+    (repo / "auth" / "login.py").write_text("def login():\n    return 'ok'\n")
+    (repo / "tests").mkdir()
+    (repo / "tests" / "test_login.py").write_text("def test_login():\n    assert True\n")
+    (repo / "docs").mkdir()
+    (repo / "docs" / "login.md").write_text("Login docs\n")
+    subprocess.run(["git", "add", "."], cwd=str(repo), capture_output=True, check=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=str(repo), capture_output=True, check=True)
+
+    app = create_app(repo_path=str(repo))
+    client = app.test_client()
+
+    response = client.get("/api/repo/feature?feature=login")
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data is not None
+    assert "feature" in data
+    assert "related_files" in data
+    assert "likely_implementation_surface" in data
+    assert "tests" in data
+    assert "docs" in data
+    assert "risk_notes" in data
+    assert "checklist" in data
+    assert any("login" in item.lower() for item in data["related_files"])
+    assert any("test_login" in item for item in data["tests"])
+    assert any("login" in item.lower() for item in data["docs"])
 
 
 def test_api_server_exposes_branch_summary_endpoint(tmp_path):
