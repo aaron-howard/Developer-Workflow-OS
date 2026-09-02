@@ -1,33 +1,23 @@
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import Any
 
-
-def _git(repo_path: str, *args: str) -> str:
-    return subprocess.check_output(["git", *args], cwd=repo_path, text=True, stderr=subprocess.STDOUT).strip()
+from app.server.adapters.git import GitInspector, SubprocessGitAdapter
 
 
-def summarize_branch(repo_path: str, base_branch: str, target_branch: str) -> dict[str, Any]:
+def summarize_branch(
+    repo_path: str,
+    base_branch: str,
+    target_branch: str,
+    git_adapter: GitInspector | None = None,
+) -> dict[str, Any]:
     repo = Path(repo_path)
+    adapter = git_adapter or SubprocessGitAdapter(repo_path)
 
-    # Ensure a plausible default if branch names are not configured yet.
-    if not _git(repo_path, "rev-parse", "--verify", target_branch):
-        pass
-
-    diff_output = _git(repo_path, "diff", "--name-status", f"{base_branch}...{target_branch}")
-    changed_files = []
+    diff_items = adapter.diff(base_branch, target_branch)
+    changed_files = [item.path for item in diff_items]
     change_summary = []
-
-    for line in diff_output.splitlines():
-        if not line.strip():
-            continue
-        pieces = line.split("\t")
-        if len(pieces) >= 2:
-            changed_files.append(pieces[1])
-        else:
-            changed_files.append(line)
 
     for file_name in changed_files:
         if file_name.endswith(".py") or file_name.endswith(".js") or file_name.endswith(".ts"):

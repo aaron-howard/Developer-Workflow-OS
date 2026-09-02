@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional
-from ..adapters.git import GitHubAdapter
+from ..adapters.github import GitHubAdapter
 from ..adapters.ci import VercelAdapter
 from ..adapters.observability import SentryAdapter
 from ..events.bus import EventBus
