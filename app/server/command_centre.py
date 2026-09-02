@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -89,10 +90,32 @@ class CommandCentre:
             "created_at": timestamp,
         }
 
+    def _resolve_artifact_path(self, artifact_id: str) -> Path | None:
+        """
+        Safely resolve the file path for an artifact_id, preventing path traversal.
+
+        Returns the resolved Path if valid and strictly within artifacts_dir, otherwise None.
+        """
+        if not artifact_id or not isinstance(artifact_id, str):
+            return None
+
+        # Disallow path separators, traversal dots, and non-alphanumeric characters
+        if not re.match(r"^[a-zA-Z0-9_-]+$", artifact_id):
+            return None
+
+        try:
+            target_file = (self.artifacts_dir / f"{artifact_id}.json").resolve()
+            base_dir = self.artifacts_dir.resolve()
+            if not target_file.is_relative_to(base_dir):
+                return None
+            return target_file
+        except (ValueError, OSError):
+            return None
+
     def get_artifact(self, artifact_id: str) -> dict[str, Any] | None:
-        """Retrieve a stored artifact by ID."""
-        artifact_file = self.artifacts_dir / f"{artifact_id}.json"
-        if not artifact_file.exists():
+        """Retrieve a stored artifact by ID safely."""
+        artifact_file = self._resolve_artifact_path(artifact_id)
+        if not artifact_file or not artifact_file.exists():
             return None
         return json.loads(artifact_file.read_text(encoding="utf-8"))
 
@@ -146,15 +169,16 @@ class CommandCentre:
         return self.get_artifact(artifacts[0]["id"])
 
     def delete_artifact(self, artifact_id: str) -> bool:
-        """Delete a stored artifact."""
-        artifact_file = self.artifacts_dir / f"{artifact_id}.json"
-        if artifact_file.exists():
-            artifact_file.unlink()
-            if artifact_id in self._index["artifacts"]:
-                del self._index["artifacts"][artifact_id]
-                self._save_index()
-            return True
-        return False
+        """Delete a stored artifact safely."""
+        artifact_file = self._resolve_artifact_path(artifact_id)
+        if not artifact_file or not artifact_file.exists():
+            return False
+
+        artifact_file.unlink()
+        if artifact_id in self._index["artifacts"]:
+            del self._index["artifacts"][artifact_id]
+            self._save_index()
+        return True
 
     def cleanup_old_artifacts(self, artifact_type: str, keep_count: int = 10) -> int:
         """
