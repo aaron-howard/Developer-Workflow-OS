@@ -11,6 +11,7 @@ def assess_release_readiness(
     base_branch: str = "main",
     git_adapter: GitInspector | None = None,
 ) -> dict[str, Any]:
+    """Assess whether a repository is ready for release based on branch diff and blockers."""
     repo = Path(repo_path)
     blockers: list[str] = []
     checks: list[str] = []

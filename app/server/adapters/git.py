@@ -1,3 +1,5 @@
+"""Git VCS inspection adapter and interface definitions."""
+
 from __future__ import annotations
 
 import subprocess
@@ -44,10 +46,12 @@ class GitInspector(ABC):
 class SubprocessGitAdapter(GitInspector):
     """Production git adapter that executes git CLI commands via subprocess."""
 
-    def __init__(self, repo_path: str | Path):
+    def __init__(self, repo_path: str | Path) -> None:
+        """Initialize adapter with the repository root directory."""
         self.repo_path = str(repo_path)
 
     def _git(self, *args: str) -> str:
+        """Execute a git CLI command and return stripped stdout output."""
         return subprocess.check_output(
             ["git", *args],
             cwd=self.repo_path,
@@ -56,16 +60,19 @@ class SubprocessGitAdapter(GitInspector):
         ).strip()
 
     def diff(self, base: str, target: str = "HEAD") -> list[FileDiff]:
+        """
+        Inspect diff between base and target revisions safely.
+        
+        Revisions are verified and resolved to object IDs using '--end-of-options'
+        to prevent argument injection. Falls back to 'git status --short' on error.
+        """
         diff_files: list[FileDiff] = []
         try:
-            if target != "HEAD":
-                try:
-                    self._git("rev-parse", "--verify", target)
-                except subprocess.CalledProcessError:
-                    pass
+            # Resolve revisions safely using rev-parse --verify --end-of-options
+            base_oid = self._git("rev-parse", "--verify", "--end-of-options", base)
+            target_oid = self._git("rev-parse", "--verify", "--end-of-options", target)
 
-            diff_range = f"{base}...{target}" if target != "HEAD" else f"{base}...HEAD"
-            output = self._git("diff", "--name-status", diff_range)
+            output = self._git("diff", "--name-status", "--end-of-options", f"{base_oid}...{target_oid}")
             for line in output.splitlines():
                 if not line.strip():
                     continue
@@ -104,6 +111,7 @@ class SubprocessGitAdapter(GitInspector):
         return unique
 
     def current_branch(self) -> str:
+        """Return the active branch name, falling back to 'main'."""
         try:
             branch = self._git("branch", "--show-current")
             return branch if branch else "main"
@@ -111,17 +119,21 @@ class SubprocessGitAdapter(GitInspector):
             return "main"
 
     def recent_commits(self, branch: str = "main", limit: int = 10) -> list[str]:
+        """Return oneline summaries of recent commits on the specified branch."""
         try:
-            output = self._git("log", f"-{limit}", "--oneline", branch)
+            branch_oid = self._git("rev-parse", "--verify", "--end-of-options", branch)
+            output = self._git("log", f"-{int(limit)}", "--oneline", "--end-of-options", branch_oid)
             return [line.strip() for line in output.splitlines() if line.strip()]
-        except (subprocess.CalledProcessError, OSError):
+        except (subprocess.CalledProcessError, OSError, ValueError):
             return []
 
     def repo_stats(self, branch: str = "main") -> dict[str, int]:
+        """Return repository statistics including total commit count and branch count."""
         commit_count = 0
         branch_count = 1
         try:
-            count_output = self._git("rev-list", "--count", branch)
+            branch_oid = self._git("rev-parse", "--verify", "--end-of-options", branch)
+            count_output = self._git("rev-list", "--count", "--end-of-options", branch_oid)
             commit_count = int(count_output)
         except (subprocess.CalledProcessError, OSError, ValueError):
             commit_count = 0
@@ -147,20 +159,25 @@ class FakeGitAdapter(GitInspector):
         branch: str = "main",
         commits: list[str] | None = None,
         stats: dict[str, int] | None = None,
-    ):
+    ) -> None:
+        """Initialize in-memory test fake with predetermined responses."""
         self._diff_files = diff_files or []
         self._branch = branch
         self._commits = commits or []
         self._stats = stats or {"commit_count": len(self._commits), "branch_count": 1}
 
     def diff(self, base: str, target: str = "HEAD") -> list[FileDiff]:
+        """Return predetermined list of FileDiff items."""
         return list(self._diff_files)
 
     def current_branch(self) -> str:
+        """Return predetermined branch name."""
         return self._branch
 
     def recent_commits(self, branch: str = "main", limit: int = 10) -> list[str]:
+        """Return predetermined recent commit summaries up to limit."""
         return self._commits[:limit]
 
     def repo_stats(self, branch: str = "main") -> dict[str, int]:
+        """Return predetermined repository statistics."""
         return dict(self._stats)

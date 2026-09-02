@@ -13,6 +13,7 @@ def generate_weekly_digest(
     limit: int = 10,
     git_adapter: GitInspector | None = None,
 ) -> dict[str, Any]:
+    """Generate a weekly digest including recent commits, branch counts, and release readiness."""
     repo = Path(repo_path)
     adapter = git_adapter or SubprocessGitAdapter(repo_path)
 

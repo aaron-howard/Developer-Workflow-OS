@@ -1,3 +1,5 @@
+"""Unit tests for GitInspector adapters and caller integrations."""
+
 import subprocess
 from pathlib import Path
 
@@ -13,10 +15,12 @@ from app.server.weekly_digest import generate_weekly_digest
 
 
 def _git(repo: Path, *args: str) -> str:
+    """Helper to run git commands during test fixture setup."""
     return subprocess.check_output(["git", *args], cwd=str(repo), text=True).strip()
 
 
 def test_fake_git_adapter_in_memory():
+    """Test that FakeGitAdapter accurately returns configured in-memory state."""
     diffs = [
         FileDiff(path="app/server/api.py", status="modified"),
         FileDiff(path="docs/notes.md", status="added"),
@@ -38,6 +42,7 @@ def test_fake_git_adapter_in_memory():
 
 
 def test_callers_with_fake_git_adapter(tmp_path):
+    """Test that domain modules integrate seamlessly with FakeGitAdapter in memory."""
     repo = tmp_path / "mock-repo"
     repo.mkdir()
     (repo / "README.md").write_text("readme", encoding="utf-8")
@@ -77,6 +82,7 @@ def test_callers_with_fake_git_adapter(tmp_path):
 
 
 def test_subprocess_git_adapter_with_real_repo(tmp_path):
+    """Test that SubprocessGitAdapter operates correctly on a real Git repository."""
     repo = tmp_path / "real-repo"
     repo.mkdir()
 
@@ -110,6 +116,7 @@ def test_subprocess_git_adapter_with_real_repo(tmp_path):
 
 
 def test_subprocess_git_adapter_resilience_on_non_git_path(tmp_path):
+    """Test that SubprocessGitAdapter gracefully handles non-git directories."""
     non_git_dir = tmp_path / "not-git"
     non_git_dir.mkdir()
 
@@ -121,3 +128,29 @@ def test_subprocess_git_adapter_resilience_on_non_git_path(tmp_path):
     stats = adapter.repo_stats("main")
     assert stats["commit_count"] == 0
     assert stats["branch_count"] == 1
+
+
+def test_subprocess_git_adapter_prevents_option_injection(tmp_path):
+    """Verify that option-prefixed revision strings cannot inject git diff flags."""
+    repo = tmp_path / "inject-repo"
+    repo.mkdir()
+
+    _git(repo, "init", "-b", "main")
+    _git(repo, "config", "user.name", "Test User")
+    _git(repo, "config", "user.email", "test@example.com")
+
+    (repo / "README.md").write_text("initial\n", encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "initial commit")
+
+    adapter = SubprocessGitAdapter(repo)
+
+    injected_file = tmp_path / "injected_output.txt"
+    malicious_ref = f"--output={injected_file}"
+
+    # Attempting diff with malicious option as base
+    diffs = adapter.diff(malicious_ref, "main")
+
+    # Injected file must not be created
+    assert not injected_file.exists()
+    assert isinstance(diffs, list)

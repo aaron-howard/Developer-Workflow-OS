@@ -12,6 +12,7 @@ def summarize_branch(
     target_branch: str,
     git_adapter: GitInspector | None = None,
 ) -> dict[str, Any]:
+    """Summarize differences, changed files, and risk areas between base and target branches."""
     repo = Path(repo_path)
     adapter = git_adapter or SubprocessGitAdapter(repo_path)
 
