@@ -191,7 +191,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
         except UnknownRoutineError as e:
             return jsonify({"error": str(e)}), 404
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error(f"Routine trigger failed: {str(e)}")
+            return jsonify({"error": "An internal error occurred while triggering the routine."}), 500
 
     @app.route("/api/sprint/recap", methods=["GET"])
     def sprint_recap():

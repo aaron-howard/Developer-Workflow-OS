@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from app.server.slack_notifier import SlackNotifier
 
 def test_slack_notifier_success():
+    """Test successful Slack notification formatting and HTTP dispatch."""
     notifier = SlackNotifier("https://fake-webhook.url")
     payload = {
         "status": "ready",
@@ -28,6 +29,7 @@ def test_slack_notifier_success():
         assert sent_data["blocks"][1]["text"]["text"] == "*release_readiness* completed with status ✅ `ready` (Score: 95)"
 
 def test_slack_notifier_no_url():
+    """Test that SlackNotifier fails gracefully when no URL is provided."""
     notifier = SlackNotifier("")
     success = notifier.post_routine_result("test", {})
     assert success is False

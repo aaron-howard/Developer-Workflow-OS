@@ -5,6 +5,7 @@ from typing import Any, Dict
 
 class SlackNotifier:
     def __init__(self, webhook_url: str):
+        """Initialize the SlackNotifier with a webhook URL."""
         self.webhook_url = webhook_url
 
     def post_routine_result(self, routine_name: str, payload: Dict[str, Any]) -> bool:
