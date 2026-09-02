@@ -1,36 +1,30 @@
+"""Weekly project digest generation module."""
+
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import Any
 
+from app.server.adapters.git import GitInspector, SubprocessGitAdapter
 from app.server.release_readiness import assess_release_readiness
 
 
-def _git(repo_path: str, *args: str) -> str:
-    return subprocess.check_output(["git", *args], cwd=repo_path, text=True, stderr=subprocess.STDOUT).strip()
-
-
-def generate_weekly_digest(repo_path: str, base_branch: str = "main", limit: int = 10) -> dict[str, Any]:
+def generate_weekly_digest(
+    repo_path: str,
+    base_branch: str = "main",
+    limit: int = 10,
+    git_adapter: GitInspector | None = None,
+) -> dict[str, Any]:
+    """Generate a weekly digest including recent commits, branch counts, and release readiness."""
     repo = Path(repo_path)
+    adapter = git_adapter or SubprocessGitAdapter(repo_path)
 
-    try:
-        recent_log = _git(repo_path, "log", f"-{limit}", "--oneline", base_branch)
-        commits = [line.strip() for line in recent_log.splitlines() if line.strip()]
-    except subprocess.CalledProcessError:
-        commits = []
+    commits = adapter.recent_commits(base_branch, limit=limit)
+    stats = adapter.repo_stats(base_branch)
+    total_commits = stats["commit_count"]
+    branch_count = stats["branch_count"]
 
-    try:
-        total_commits = int(_git(repo_path, "rev-list", "--count", base_branch))
-    except (subprocess.CalledProcessError, ValueError):
-        total_commits = 0
-
-    try:
-        branch_count = len(_git(repo_path, "branch", "-a").splitlines())
-    except subprocess.CalledProcessError:
-        branch_count = 0
-
-    readiness = assess_release_readiness(repo_path, base_branch)
+    readiness = assess_release_readiness(repo_path, base_branch, git_adapter=adapter)
     release_score = readiness.get("score", 0)
     blockers = readiness.get("blockers", [])
 

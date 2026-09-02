@@ -1,15 +1,19 @@
+"""Release readiness evaluation module."""
+
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import Any
 
-
-def _git(repo_path: str, *args: str) -> str:
-    return subprocess.check_output(["git", *args], cwd=repo_path, text=True, stderr=subprocess.STDOUT).strip()
+from app.server.adapters.git import GitInspector, SubprocessGitAdapter
 
 
-def assess_release_readiness(repo_path: str, base_branch: str = "main") -> dict[str, Any]:
+def assess_release_readiness(
+    repo_path: str,
+    base_branch: str = "main",
+    git_adapter: GitInspector | None = None,
+) -> dict[str, Any]:
+    """Assess whether a repository is ready for release based on branch diff and blockers."""
     repo = Path(repo_path)
     blockers: list[str] = []
     checks: list[str] = []
@@ -23,21 +27,14 @@ def assess_release_readiness(repo_path: str, base_branch: str = "main") -> dict[
             "checks": [],
         }
 
-    try:
-        branch = _git(repo_path, "branch", "--show-current") or "main"
-    except (subprocess.CalledProcessError, OSError):
-        branch = "main"
+    adapter = git_adapter or SubprocessGitAdapter(repo_path)
+    branch = adapter.current_branch()
 
-    try:
-        changed_files = _git(repo_path, "diff", "--name-only", f"{base_branch}...{branch}")
-        files = [line.strip() for line in changed_files.splitlines() if line.strip()]
-    except (subprocess.CalledProcessError, OSError):
-        try:
-            changed_files = _git(repo_path, "status", "--short")
-            files = [line[3:].strip() for line in changed_files.splitlines() if line.strip()]
-        except (subprocess.CalledProcessError, OSError):
-            files = []
-            checks.append("Repository is not a git checkout; release readiness is based on workspace scan only")
+    if not (repo / ".git").exists() and git_adapter is None:
+        checks.append("Repository is not a git checkout; release readiness is based on workspace scan only")
+
+    diff_items = adapter.diff(base_branch, branch)
+    files = [item.path for item in diff_items]
 
     if not files:
         checks.append("No local branch diff detected against the base branch")

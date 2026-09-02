@@ -1,11 +1,17 @@
+"""Webhook router for dispatching incoming payloads to integration adapters."""
+
 from typing import Any, Dict, Optional
-from ..adapters.git import GitHubAdapter
+from ..adapters.github import GitHubAdapter
 from ..adapters.ci import VercelAdapter
 from ..adapters.observability import SentryAdapter
 from ..events.bus import EventBus
 
+
 class WebhookRouter:
-    def __init__(self, event_bus: EventBus):
+    """Router for dispatching incoming webhook payloads to appropriate integration adapters."""
+
+    def __init__(self, event_bus: EventBus) -> None:
+        """Initialize webhook router with an event bus and integration adapters."""
         self.event_bus = event_bus
         self.adapters = {
             "github": GitHubAdapter(),

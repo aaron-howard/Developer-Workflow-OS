@@ -1,47 +1,24 @@
+"""Draft release note generation module."""
+
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import Any
 
-
-def _git(repo_path: str, *args: str) -> str:
-    return subprocess.check_output(
-        ["git", *args],
-        cwd=repo_path,
-        text=True,
-        stderr=subprocess.STDOUT,
-    ).strip()
+from app.server.adapters.git import GitInspector, SubprocessGitAdapter
 
 
-def generate_release_notes(repo_path: str, base_branch: str = "main") -> dict[str, Any]:
+def generate_release_notes(
+    repo_path: str,
+    base_branch: str = "main",
+    git_adapter: GitInspector | None = None,
+) -> dict[str, Any]:
     """Draft a concise release note summary from the diff against the base branch."""
     repo = Path(repo_path)
-    changed_files: list[str] = []
+    adapter = git_adapter or SubprocessGitAdapter(repo_path)
 
-    try:
-        diff_output = _git(repo_path, "diff", "--name-status", f"{base_branch}...HEAD")
-        for line in diff_output.splitlines():
-            if not line.strip():
-                continue
-            parts = [part.strip() for part in line.split("\t") if part.strip()]
-            changed_files.append(parts[-1] if parts else line.strip())
-    except subprocess.CalledProcessError:
-        try:
-            status_output = _git(repo_path, "status", "--short")
-            for line in status_output.splitlines():
-                if not line.strip():
-                    continue
-                changed_files.append(line[3:].strip())
-        except subprocess.CalledProcessError:
-            changed_files = []
-
-    unique_files = []
-    seen: set[str] = set()
-    for item in changed_files:
-        if item and item not in seen:
-            unique_files.append(item)
-            seen.add(item)
+    diff_items = adapter.diff(base_branch, "HEAD")
+    unique_files = [item.path for item in diff_items]
 
     if not unique_files:
         highlight_lines = ["No code or docs changes detected against the base branch."]
