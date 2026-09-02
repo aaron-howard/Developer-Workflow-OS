@@ -164,7 +164,10 @@ class FakeGitAdapter(GitInspector):
         self._diff_files = diff_files or []
         self._branch = branch
         self._commits = commits or []
-        self._stats = stats or {"commit_count": len(self._commits), "branch_count": 1}
+        self._stats = stats if stats is not None else {
+            "commit_count": len(self._commits),
+            "branch_count": 1,
+        }
 
     def diff(self, base: str, target: str = "HEAD") -> list[FileDiff]:
         """Return predetermined list of FileDiff items."""

@@ -154,3 +154,10 @@ def test_subprocess_git_adapter_prevents_option_injection(tmp_path):
     # Injected file must not be created
     assert not injected_file.exists()
     assert isinstance(diffs, list)
+
+
+def test_fake_git_adapter_empty_stats():
+    """Verify that FakeGitAdapter preserves explicitly provided empty stats dictionary."""
+    fake = FakeGitAdapter(stats={})
+    assert fake.repo_stats() == {}
+
