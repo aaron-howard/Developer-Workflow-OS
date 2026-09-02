@@ -25,15 +25,19 @@ def assess_release_readiness(repo_path: str, base_branch: str = "main") -> dict[
 
     try:
         branch = _git(repo_path, "branch", "--show-current") or "main"
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, OSError):
         branch = "main"
 
     try:
         changed_files = _git(repo_path, "diff", "--name-only", f"{base_branch}...{branch}")
         files = [line.strip() for line in changed_files.splitlines() if line.strip()]
-    except subprocess.CalledProcessError:
-        changed_files = _git(repo_path, "status", "--short")
-        files = [line[3:].strip() for line in changed_files.splitlines() if line.strip()]
+    except (subprocess.CalledProcessError, OSError):
+        try:
+            changed_files = _git(repo_path, "status", "--short")
+            files = [line[3:].strip() for line in changed_files.splitlines() if line.strip()]
+        except (subprocess.CalledProcessError, OSError):
+            files = []
+            checks.append("Repository is not a git checkout; release readiness is based on workspace scan only")
 
     if not files:
         checks.append("No local branch diff detected against the base branch")
