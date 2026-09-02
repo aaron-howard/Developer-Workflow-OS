@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -99,12 +100,17 @@ class CommandCentre:
         if not artifact_id or not isinstance(artifact_id, str):
             return None
 
-        # Disallow path separators, traversal dots, and non-alphanumeric characters
-        if not re.match(r"^[a-zA-Z0-9_-]+$", artifact_id):
+        # Sanitize with basename and strictly validate format
+        clean_id = os.path.basename(artifact_id)
+        if clean_id != artifact_id or not re.match(r"^[a-zA-Z0-9_-]+$", clean_id):
+            return None
+
+        # Ensure ID belongs to an indexed artifact
+        if clean_id not in self._index.get("artifacts", {}):
             return None
 
         try:
-            target_file = (self.artifacts_dir / f"{artifact_id}.json").resolve()
+            target_file = (self.artifacts_dir / f"{clean_id}.json").resolve()
             base_dir = self.artifacts_dir.resolve()
             if not target_file.is_relative_to(base_dir):
                 return None

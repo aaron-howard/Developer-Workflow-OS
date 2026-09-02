@@ -195,6 +195,7 @@ def test_command_centre_prevents_path_traversal_on_get_and_delete(tmp_path):
     # Delete traversal attempts
     assert centre.delete_artifact("../secret") is False
     assert centre.delete_artifact("..\\secret") is False
+    assert centre.delete_artifact("../../secret") is False
     assert outside_file.exists()  # outside file must remain untouched
 
     # Stored artifact still gets and deletes cleanly
