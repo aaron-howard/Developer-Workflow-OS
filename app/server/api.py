@@ -1,3 +1,5 @@
+"""API server routing and HTTP endpoint definitions."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -49,7 +51,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = index_repo(app.config["REPO_PATH"])
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in repo_index: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/repo/feature", methods=["GET"])
     def repo_feature():
@@ -61,7 +64,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = build_feature_context(app.config["REPO_PATH"], feature)
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in repo_feature: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/branch/summary", methods=["GET"])
     def branch_summary():
@@ -74,7 +78,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = summarize_branch(app.config["REPO_PATH"], base, target)
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in branch_summary: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/release/readiness", methods=["GET"])
     def release_readiness():
@@ -84,7 +89,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = assess_release_readiness(app.config["REPO_PATH"], base)
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in release_readiness: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/release/notes", methods=["GET"])
     def release_notes():
@@ -94,7 +100,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = generate_release_notes(app.config["REPO_PATH"], base)
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in release_notes: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/feature/checklist", methods=["GET"])
     def feature_checklist():
@@ -106,7 +113,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = generate_implementation_checklist(app.config["REPO_PATH"], feature)
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in feature_checklist: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/issue/map", methods=["GET"])
     def issue_map():
@@ -118,7 +126,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = map_issue_to_code(app.config["REPO_PATH"], issue)
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in issue_map: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/digest/weekly", methods=["GET"])
     def weekly_digest_endpoint():
@@ -128,7 +137,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = generate_weekly_digest(app.config["REPO_PATH"], base)
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in weekly_digest_endpoint: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/plan/status", methods=["GET"])
     def plan_status():
@@ -136,7 +146,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
         try:
             return jsonify(plan_coverage_report()), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in plan_status: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/dashboard/release-status", methods=["GET"])
     def dashboard_release_status():
@@ -146,7 +157,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = get_release_status(app.config["REPO_PATH"], base)
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in dashboard_release_status: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/dashboard/action-items", methods=["GET"])
     def dashboard_action_items():
@@ -158,7 +170,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = get_action_items(app.config["REPO_PATH"], context)
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in dashboard_action_items: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/artifacts/navigation", methods=["GET"])
     def artifacts_navigation():
@@ -167,7 +180,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = get_artifacts_navigation(app.config["MEMORY_PATH"])
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in artifacts_navigation: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/routines/history", methods=["GET"])
     def routines_history():
@@ -176,7 +190,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = get_routine_history(app.config["MEMORY_PATH"])
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in routines_history: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/routines/trigger", methods=["POST"])
     def routines_trigger():
@@ -189,10 +204,10 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = app.scheduler.run_routine(routine)
             return jsonify(result), 200
         except UnknownRoutineError as e:
-            app.logger.warning(f"Unknown routine requested: {str(e)}")
+            app.logger.warning("Unknown routine requested: %s", e)
             return jsonify({"error": "Unknown routine requested."}), 404
         except Exception as e:
-            app.logger.error(f"Routine trigger failed: {str(e)}")
+            app.logger.error("Routine trigger failed: %s", e, exc_info=True)
             return jsonify({"error": "An internal error occurred while triggering the routine."}), 500
 
     @app.route("/api/sprint/recap", methods=["GET"])
@@ -202,7 +217,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = generate_sprint_recap(app.config["REPO_PATH"], app.config["MEMORY_PATH"])
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in sprint_recap: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/features/parity", methods=["GET"])
     def features_parity():
@@ -211,7 +227,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = validate_feature_parity(app.config["REPO_PATH"], app.config["MEMORY_PATH"])
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in features_parity: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/project/snapshot", methods=["GET"])
     def project_snapshot():
@@ -220,7 +237,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = generate_project_snapshot(app.config["REPO_PATH"], app.config["MEMORY_PATH"])
             return jsonify(result), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in project_snapshot: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/routines", methods=["GET"])
     def list_routines():
@@ -229,7 +247,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             routines = app.scheduler.list_routines()
             return jsonify({"routines": routines}), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in list_routines: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/routines/<routine_name>/run", methods=["POST"])
     def run_routine(routine_name):
@@ -238,9 +257,11 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = app.scheduler.run_routine(routine_name)
             return jsonify(result), 200
         except ValueError as e:
-            return jsonify({"error": str(e)}), 404
+            app.logger.warning("Routine not found: %s", e)
+            return jsonify({"error": "Routine not found."}), 404
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error running routine: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/artifacts", methods=["GET"])
     def list_artifacts():
@@ -254,7 +275,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             )
             return jsonify({"artifacts": artifacts}), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in list_artifacts: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/artifacts", methods=["POST"])
     def store_artifact():
@@ -277,7 +299,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             )
             return jsonify(result), 201
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in store_artifact: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/artifacts/<artifact_id>", methods=["GET"])
     def get_artifact_by_id(artifact_id):
@@ -288,7 +311,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
                 return jsonify({"error": "Artifact not found"}), 404
             return jsonify(artifact), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in get_artifact_by_id: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     @app.route("/api/artifacts/latest", methods=["GET"])
     def get_latest():
@@ -305,6 +329,7 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
                 )
             return jsonify(artifact), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error("Error in get_latest: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
 
     return app
