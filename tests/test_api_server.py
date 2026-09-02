@@ -446,3 +446,24 @@ def test_api_server_retrieves_latest_artifact(tmp_path):
     assert response.status_code == 200
     data = response.get_json()
     assert data["content"]["version"] == 2
+
+
+def test_api_server_masks_internal_exceptions_and_stack_traces(monkeypatch):
+    """Verify that unexpected exceptions return sanitized messages without leaking stack traces."""
+    from app.server.api import create_app
+
+    app = create_app(repo_path=".")
+    client = app.test_client()
+
+    def mock_broken_index(_):
+        raise RuntimeError("SecretDBConnectionFailed: at /internal/secrets/db.key line 42")
+
+    monkeypatch.setattr("app.server.api.index_repo", mock_broken_index)
+
+    response = client.get("/api/repo/index")
+    assert response.status_code == 500
+    data = response.get_json()
+    assert data == {"error": "An internal error occurred."}
+    assert "SecretDBConnectionFailed" not in response.get_data(as_text=True)
+    assert "/internal/secrets" not in response.get_data(as_text=True)
+
