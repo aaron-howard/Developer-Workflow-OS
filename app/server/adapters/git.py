@@ -18,6 +18,39 @@ class FileDiff:
     path: str
     status: str = "modified"  # e.g., "modified", "added", "deleted", "untracked"
 
+    @property
+    def is_code(self) -> bool:
+        """Check if file is application code."""
+        return self.path.endswith((".py", ".js", ".ts", ".jsx", ".tsx", ".cs", ".java"))
+
+    @property
+    def is_doc(self) -> bool:
+        """Check if file is documentation."""
+        return self.path.endswith((".md", ".rst", ".txt"))
+
+
+@dataclass(frozen=True)
+class RepoStats:
+    """Summary repository statistics."""
+    commit_count: int = 0
+    branch_count: int = 1
+
+    def __getitem__(self, key: str) -> int:
+        """Allow dict-like indexing for backward compatibility."""
+        if key == "commit_count":
+            return self.commit_count
+        if key == "branch_count":
+            return self.branch_count
+        raise KeyError(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Allow dict-like get for backward compatibility."""
+        if key == "commit_count":
+            return self.commit_count
+        if key == "branch_count":
+            return self.branch_count
+        return default
+
 
 class GitInspector(ABC):
     """Abstract interface defining high-leverage repository inspection queries."""
@@ -38,7 +71,7 @@ class GitInspector(ABC):
         pass
 
     @abstractmethod
-    def repo_stats(self, branch: str = "main") -> dict[str, int]:
+    def repo_stats(self, branch: str = "main") -> RepoStats | dict[str, int]:
         """Return summary repository stats such as commit count and branch count."""
         pass
 
@@ -127,7 +160,7 @@ class SubprocessGitAdapter(GitInspector):
         except (subprocess.CalledProcessError, OSError, ValueError):
             return []
 
-    def repo_stats(self, branch: str = "main") -> dict[str, int]:
+    def repo_stats(self, branch: str = "main") -> RepoStats:
         """Return repository statistics including total commit count and branch count."""
         commit_count = 0
         branch_count = 1
@@ -144,10 +177,10 @@ class SubprocessGitAdapter(GitInspector):
         except (subprocess.CalledProcessError, OSError):
             branch_count = 1
 
-        return {
-            "commit_count": commit_count,
-            "branch_count": branch_count,
-        }
+        return RepoStats(
+            commit_count=commit_count,
+            branch_count=branch_count,
+        )
 
 
 class FakeGitAdapter(GitInspector):
@@ -158,16 +191,16 @@ class FakeGitAdapter(GitInspector):
         diff_files: list[FileDiff] | None = None,
         branch: str = "main",
         commits: list[str] | None = None,
-        stats: dict[str, int] | None = None,
+        stats: RepoStats | dict[str, int] | None = None,
     ) -> None:
         """Initialize in-memory test fake with predetermined responses."""
         self._diff_files = diff_files or []
         self._branch = branch
         self._commits = commits or []
-        self._stats = stats if stats is not None else {
-            "commit_count": len(self._commits),
-            "branch_count": 1,
-        }
+        if stats is not None:
+            self._stats = stats
+        else:
+            self._stats = RepoStats(commit_count=len(self._commits), branch_count=1)
 
     def diff(self, base: str, target: str = "HEAD") -> list[FileDiff]:
         """Return predetermined list of FileDiff items."""
@@ -181,6 +214,8 @@ class FakeGitAdapter(GitInspector):
         """Return predetermined recent commit summaries up to limit."""
         return self._commits[:limit]
 
-    def repo_stats(self, branch: str = "main") -> dict[str, int]:
+    def repo_stats(self, branch: str = "main") -> RepoStats | dict[str, int]:
         """Return predetermined repository statistics."""
-        return dict(self._stats)
+        if isinstance(self._stats, dict):
+            return dict(self._stats)
+        return self._stats

@@ -6,6 +6,7 @@ from pathlib import Path
 from app.server.adapters.git import (
     FileDiff,
     FakeGitAdapter,
+    RepoStats,
     SubprocessGitAdapter,
 )
 from app.server.branch_summary import summarize_branch
@@ -160,4 +161,36 @@ def test_fake_git_adapter_empty_stats():
     """Verify that FakeGitAdapter preserves explicitly provided empty stats dictionary."""
     fake = FakeGitAdapter(stats={})
     assert fake.repo_stats() == {}
+
+
+def test_file_diff_classification_properties():
+    """Verify that FileDiff correctly classifies code and documentation files."""
+    code_diff = FileDiff(path="app/server/main.py", status="modified")
+    ts_diff = FileDiff(path="frontend/src/index.tsx", status="added")
+    doc_diff = FileDiff(path="docs/architecture.md", status="modified")
+    other_diff = FileDiff(path="package.json", status="modified")
+
+    assert code_diff.is_code is True
+    assert code_diff.is_doc is False
+
+    assert ts_diff.is_code is True
+    assert ts_diff.is_doc is False
+
+    assert doc_diff.is_code is False
+    assert doc_diff.is_doc is True
+
+    assert other_diff.is_code is False
+    assert other_diff.is_doc is False
+
+
+def test_repo_stats_dataclass():
+    """Verify RepoStats attribute access and backward-compatible dict access."""
+    stats = RepoStats(commit_count=42, branch_count=3)
+    assert stats.commit_count == 42
+    assert stats.branch_count == 3
+    assert stats["commit_count"] == 42
+    assert stats["branch_count"] == 3
+    assert stats.get("commit_count") == 42
+    assert stats.get("nonexistent", 99) == 99
+
 
