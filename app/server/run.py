@@ -42,6 +42,12 @@ def main():
         action="store_true",
         help="Run in debug mode (default: False)",
     )
+    parser.add_argument(
+        "--slack-webhook",
+        type=str,
+        default=None,
+        help="Slack Webhook URL for routine notifications",
+    )
 
     args = parser.parse_args()
 
@@ -68,7 +74,11 @@ def main():
     print("  GET  /api/artifacts/latest?type=<type>")
     print()
 
-    app = create_app(repo_path=str(repo_path), memory_path=str(repo_path / ".memory"))
+    app = create_app(
+        repo_path=str(repo_path), 
+        memory_path=str(repo_path / ".memory"),
+        slack_webhook_url=args.slack_webhook
+    )
     app.run(host=args.host, port=args.port, debug=args.debug)
 
 
