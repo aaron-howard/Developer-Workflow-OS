@@ -9,7 +9,6 @@ from app.server.command_centre import CommandCentre
 from app.server.artifact_navigation import (
     get_artifacts_navigation,
     get_routine_history,
-    trigger_routine,
 )
 from app.server.dashboard_integration import get_action_items, get_release_status
 from app.server.plan_alignment import plan_coverage_report
@@ -187,8 +186,10 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
         if not routine:
             return jsonify({"error": "routine parameter is required"}), 400
         try:
-            result = trigger_routine(app.config["REPO_PATH"], routine)
+            result = app.scheduler.run_routine(routine)
             return jsonify(result), 200
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 404
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 

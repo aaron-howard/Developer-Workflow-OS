@@ -51,7 +51,7 @@ class SlackNotifier:
         )
 
         try:
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=10) as response:
                 return response.status == 200
         except urllib.error.URLError:
             return False
