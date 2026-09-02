@@ -189,7 +189,8 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             result = app.scheduler.run_routine(routine)
             return jsonify(result), 200
         except UnknownRoutineError as e:
-            return jsonify({"error": str(e)}), 404
+            app.logger.warning(f"Unknown routine requested: {str(e)}")
+            return jsonify({"error": "Unknown routine requested."}), 404
         except Exception as e:
             app.logger.error(f"Routine trigger failed: {str(e)}")
             return jsonify({"error": "An internal error occurred while triggering the routine."}), 500
