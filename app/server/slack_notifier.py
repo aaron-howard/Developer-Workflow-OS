@@ -11,6 +11,9 @@ class SlackNotifier:
         """Format the routine result and post it to Slack."""
         if not self.webhook_url:
             return False
+            
+        if not self.webhook_url.startswith("https://"):
+            return False
 
         status = payload.get("status", "unknown")
         emoji = "✅" if status == "ok" or status == "ready" else "⚠️" if status == "watch" else "❌"
@@ -43,15 +46,14 @@ class SlackNotifier:
         
         slack_payload = {"blocks": blocks}
 
-        req = urllib.request.Request(
-            self.webhook_url, 
-            data=json.dumps(slack_payload).encode('utf-8'),
-            headers={'Content-Type': 'application/json'},
-            method='POST'
-        )
-
         try:
+            req = urllib.request.Request(
+                self.webhook_url, 
+                data=json.dumps(slack_payload).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+                method='POST'
+            )
             with urllib.request.urlopen(req, timeout=10) as response:
                 return response.status == 200
-        except urllib.error.URLError:
+        except (urllib.error.URLError, ValueError, TimeoutError):
             return False

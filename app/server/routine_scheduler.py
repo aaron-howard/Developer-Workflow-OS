@@ -11,6 +11,11 @@ from app.server.weekly_digest import generate_weekly_digest
 from app.server.slack_notifier import SlackNotifier
 
 
+class UnknownRoutineError(Exception):
+    """Raised when an unknown routine is requested."""
+    pass
+
+
 class RoutineScheduler:
     """Register and run recurring developer workflow routines."""
 
@@ -76,7 +81,7 @@ class RoutineScheduler:
     def run_routine(self, name: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Execute a registered routine and record the result as an artifact."""
         if name not in self._routines:
-            raise ValueError(f"Unknown routine: {name}")
+            raise UnknownRoutineError(f"Unknown routine: {name}")
 
         routine = self._routines[name]
         result = routine["callable"](*args, **kwargs)

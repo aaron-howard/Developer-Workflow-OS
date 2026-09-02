@@ -22,7 +22,7 @@ from app.server.sprint_recap import (
     generate_project_snapshot,
 )
 from app.server.repo_memory import build_feature_context, index_repo
-from app.server.routine_scheduler import RoutineScheduler
+from app.server.routine_scheduler import RoutineScheduler, UnknownRoutineError
 from app.server.weekly_digest import generate_weekly_digest
 
 
@@ -188,7 +188,7 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
         try:
             result = app.scheduler.run_routine(routine)
             return jsonify(result), 200
-        except ValueError as e:
+        except UnknownRoutineError as e:
             return jsonify({"error": str(e)}), 404
         except Exception as e:
             return jsonify({"error": str(e)}), 500

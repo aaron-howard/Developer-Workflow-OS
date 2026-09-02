@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 from app.server.slack_notifier import SlackNotifier
 
 def test_slack_notifier_success():
-    notifier = SlackNotifier("http://fake-webhook.url")
+    notifier = SlackNotifier("https://fake-webhook.url")
     payload = {
         "status": "ready",
         "result": {"score": 95}
