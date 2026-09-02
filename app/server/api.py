@@ -9,7 +9,6 @@ from app.server.command_centre import CommandCentre
 from app.server.artifact_navigation import (
     get_artifacts_navigation,
     get_routine_history,
-    trigger_routine,
 )
 from app.server.dashboard_integration import get_action_items, get_release_status
 from app.server.plan_alignment import plan_coverage_report
@@ -23,17 +22,17 @@ from app.server.sprint_recap import (
     generate_project_snapshot,
 )
 from app.server.repo_memory import build_feature_context, index_repo
-from app.server.routine_scheduler import RoutineScheduler
+from app.server.routine_scheduler import RoutineScheduler, UnknownRoutineError
 from app.server.weekly_digest import generate_weekly_digest
 
 
-def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
+def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook_url: str | None = None) -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config["REPO_PATH"] = repo_path
     app.config["MEMORY_PATH"] = memory_path
     app.centre = CommandCentre(repo_path=repo_path, memory_path=memory_path)
-    app.scheduler = RoutineScheduler(repo_path=repo_path, memory_path=memory_path)
+    app.scheduler = RoutineScheduler(repo_path=repo_path, memory_path=memory_path, slack_webhook_url=slack_webhook_url)
     app.scheduler.install_default_routines()
     app.scheduler.run_due_routines()
 
@@ -187,10 +186,14 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
         if not routine:
             return jsonify({"error": "routine parameter is required"}), 400
         try:
-            result = trigger_routine(app.config["REPO_PATH"], routine)
+            result = app.scheduler.run_routine(routine)
             return jsonify(result), 200
+        except UnknownRoutineError as e:
+            app.logger.warning(f"Unknown routine requested: {str(e)}")
+            return jsonify({"error": "Unknown routine requested."}), 404
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            app.logger.error(f"Routine trigger failed: {str(e)}")
+            return jsonify({"error": "An internal error occurred while triggering the routine."}), 500
 
     @app.route("/api/sprint/recap", methods=["GET"])
     def sprint_recap():
