@@ -170,3 +170,38 @@ def test_command_centre_retrieves_latest_artifact(tmp_path):
     latest = centre.get_latest_artifact(artifact_type="weekly_digest")
     assert latest is not None
     assert latest["content"]["version"] == 2
+
+
+def test_command_centre_prevents_path_traversal_on_get_and_delete(tmp_path):
+    """Verify that get_artifact and delete_artifact block path traversal attempts."""
+    repo = tmp_path / "traversal-repo"
+    repo.mkdir()
+    memory_dir = tmp_path / "memory"
+    memory_dir.mkdir()
+
+    # Create an outside file that should not be accessible
+    outside_file = tmp_path / "secret.json"
+    outside_file.write_text('{"secret": "leak"}', encoding="utf-8")
+
+    centre = CommandCentre(repo_path=str(repo), memory_path=str(memory_dir))
+
+    # Path traversal attempts
+    assert centre.get_artifact("../secret") is None
+    assert centre.get_artifact("..\\secret") is None
+    assert centre.get_artifact("../../secret") is None
+    assert centre.get_artifact("nested/../../secret") is None
+    assert centre.get_artifact("invalid-name!@#") is None
+
+    # Delete traversal attempts
+    assert centre.delete_artifact("../secret") is False
+    assert centre.delete_artifact("..\\secret") is False
+    assert centre.delete_artifact("../../secret") is False
+    assert outside_file.exists()  # outside file must remain untouched
+
+    # Stored artifact still gets and deletes cleanly
+    valid_artifact = centre.store_artifact("safe", "weekly_digest", {"ok": True})
+    art_id = valid_artifact["id"]
+    assert centre.get_artifact(art_id) is not None
+    assert centre.delete_artifact(art_id) is True
+    assert centre.get_artifact(art_id) is None
+

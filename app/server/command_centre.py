@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -89,12 +91,44 @@ class CommandCentre:
             "created_at": timestamp,
         }
 
-    def get_artifact(self, artifact_id: str) -> dict[str, Any] | None:
-        """Retrieve a stored artifact by ID."""
-        artifact_file = self.artifacts_dir / f"{artifact_id}.json"
-        if not artifact_file.exists():
+    def _resolve_artifact_path(self, artifact_id: str) -> Path | None:
+        """
+        Safely resolve the file path for an artifact_id, preventing path traversal.
+
+        Returns the resolved Path if valid and strictly within artifacts_dir, otherwise None.
+        """
+        if not artifact_id or not isinstance(artifact_id, str):
             return None
-        return json.loads(artifact_file.read_text(encoding="utf-8"))
+
+        # Sanitize with basename and strictly validate format
+        clean_id = os.path.basename(artifact_id)
+        if clean_id != artifact_id or not re.match(r"^[a-zA-Z0-9_-]+$", clean_id):
+            return None
+
+        # Ensure ID belongs to an indexed artifact
+        if clean_id not in self._index.get("artifacts", {}):
+            return None
+
+        try:
+            base_dir = os.path.realpath(str(self.artifacts_dir))
+            target_path = os.path.realpath(os.path.join(base_dir, clean_id + ".json"))
+
+            # Verify path containment using commonpath and separator prefix
+            if os.path.commonpath([base_dir, target_path]) != base_dir:
+                return None
+            if not target_path.startswith(base_dir + os.sep):
+                return None
+            return Path(target_path)
+        except (ValueError, OSError):
+            return None
+
+    def get_artifact(self, artifact_id: str) -> dict[str, Any] | None:
+        """Retrieve a stored artifact by ID safely."""
+        artifact_file = self._resolve_artifact_path(artifact_id)
+        if not artifact_file or not os.path.isfile(str(artifact_file)):
+            return None
+        with open(artifact_file, "r", encoding="utf-8") as f:
+            return json.load(f)
 
     def list_artifacts(
         self,
@@ -146,15 +180,16 @@ class CommandCentre:
         return self.get_artifact(artifacts[0]["id"])
 
     def delete_artifact(self, artifact_id: str) -> bool:
-        """Delete a stored artifact."""
-        artifact_file = self.artifacts_dir / f"{artifact_id}.json"
-        if artifact_file.exists():
-            artifact_file.unlink()
-            if artifact_id in self._index["artifacts"]:
-                del self._index["artifacts"][artifact_id]
-                self._save_index()
-            return True
-        return False
+        """Delete a stored artifact safely."""
+        artifact_file = self._resolve_artifact_path(artifact_id)
+        if not artifact_file or not os.path.isfile(str(artifact_file)):
+            return False
+
+        os.remove(str(artifact_file))
+        if artifact_id in self._index.get("artifacts", {}):
+            del self._index["artifacts"][artifact_id]
+            self._save_index()
+        return True
 
     def cleanup_old_artifacts(self, artifact_type: str, keep_count: int = 10) -> int:
         """
