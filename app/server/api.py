@@ -27,13 +27,13 @@ from app.server.routine_scheduler import RoutineScheduler
 from app.server.weekly_digest import generate_weekly_digest
 
 
-def create_app(repo_path: str = ".", memory_path: str = ".memory") -> Flask:
+def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook_url: str | None = None) -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config["REPO_PATH"] = repo_path
     app.config["MEMORY_PATH"] = memory_path
     app.centre = CommandCentre(repo_path=repo_path, memory_path=memory_path)
-    app.scheduler = RoutineScheduler(repo_path=repo_path, memory_path=memory_path)
+    app.scheduler = RoutineScheduler(repo_path=repo_path, memory_path=memory_path, slack_webhook_url=slack_webhook_url)
     app.scheduler.install_default_routines()
     app.scheduler.run_due_routines()
 

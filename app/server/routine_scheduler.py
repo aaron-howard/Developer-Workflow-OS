@@ -8,6 +8,7 @@ from typing import Any, Callable
 from app.server.command_centre import CommandCentre
 from app.server.release_readiness import assess_release_readiness
 from app.server.weekly_digest import generate_weekly_digest
+from app.server.slack_notifier import SlackNotifier
 
 
 class RoutineScheduler:
@@ -20,13 +21,14 @@ class RoutineScheduler:
         "weekly": 7 * 24 * 60 * 60,
     }
 
-    def __init__(self, repo_path: str, memory_path: str = ".memory"):
+    def __init__(self, repo_path: str, memory_path: str = ".memory", slack_webhook_url: str | None = None):
         self.repo_path = Path(repo_path)
         self.memory_path = Path(memory_path)
         self.routines_dir = self.memory_path / "routines"
         self.routines_dir.mkdir(parents=True, exist_ok=True)
         self.centre = CommandCentre(repo_path=str(self.repo_path), memory_path=str(self.memory_path))
         self._routines: dict[str, dict[str, Any]] = {}
+        self.slack = SlackNotifier(slack_webhook_url) if slack_webhook_url else None
 
     def _interval_seconds(self, interval: str) -> int:
         """Map a routine interval to a duration in seconds."""
@@ -95,6 +97,9 @@ class RoutineScheduler:
             content=payload,
             tags=[name, routine["interval"], "routine"],
         )
+        
+        if self.slack:
+            self.slack.post_routine_result(name, payload)
 
         return {
             "name": name,
