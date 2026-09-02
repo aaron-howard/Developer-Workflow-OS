@@ -22,18 +22,18 @@ def summarize_branch(
     changed_files = [item.path for item in diff_items]
     change_summary = []
 
-    for file_name in changed_files:
-        if file_name.endswith(".py") or file_name.endswith(".js") or file_name.endswith(".ts"):
-            change_summary.append(f"Code update in {file_name} likely affects runtime behavior")
-        elif file_name.endswith(".md"):
-            change_summary.append(f"Documentation update in {file_name} may affect release notes or onboarding")
+    for item in diff_items:
+        if item.is_code:
+            change_summary.append(f"Code update in {item.path} likely affects runtime behavior")
+        elif item.is_doc:
+            change_summary.append(f"Documentation update in {item.path} may affect release notes or onboarding")
         else:
-            change_summary.append(f"Updated {file_name}")
+            change_summary.append(f"Updated {item.path}")
 
     risk_areas = []
-    if any(path.endswith(".py") for path in changed_files):
+    if any(item.is_code for item in diff_items):
         risk_areas.append("Runtime behavior risk in application logic")
-    if any(path.endswith(".md") for path in changed_files):
+    if any(item.is_doc for item in diff_items):
         risk_areas.append("Documentation drift risk")
     if not risk_areas:
         risk_areas.append("No major risk signals detected from the current diff")

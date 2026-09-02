@@ -21,8 +21,8 @@ def generate_weekly_digest(
 
     commits = adapter.recent_commits(base_branch, limit=limit)
     stats = adapter.repo_stats(base_branch)
-    total_commits = stats["commit_count"]
-    branch_count = stats["branch_count"]
+    total_commits = stats.commit_count if hasattr(stats, "commit_count") else stats.get("commit_count", 0)
+    branch_count = stats.branch_count if hasattr(stats, "branch_count") else stats.get("branch_count", 1)
 
     readiness = assess_release_readiness(repo_path, base_branch, git_adapter=adapter)
     release_score = readiness.get("score", 0)

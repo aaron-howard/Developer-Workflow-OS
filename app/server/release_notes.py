@@ -28,13 +28,13 @@ def generate_release_notes(
         )
     else:
         highlight_lines = []
-        for file_name in unique_files[:5]:
-            if file_name.endswith(".py") or file_name.endswith(".js") or file_name.endswith(".ts"):
-                highlight_lines.append(f"Updated {file_name} to improve runtime behavior and application flow.")
-            elif file_name.endswith(".md"):
-                highlight_lines.append(f"Refreshed documentation in {file_name} to match the shipped changes.")
+        for item in diff_items[:5]:
+            if item.is_code:
+                highlight_lines.append(f"Updated {item.path} to improve runtime behavior and application flow.")
+            elif item.is_doc:
+                highlight_lines.append(f"Refreshed documentation in {item.path} to match the shipped changes.")
             else:
-                highlight_lines.append(f"Touched {file_name} as part of the current release.")
+                highlight_lines.append(f"Touched {item.path} as part of the current release.")
 
         summary = (
             f"Release notes for {repo.name}: the current change set introduces {len(unique_files)} file(s) "
