@@ -199,6 +199,14 @@
         </section>
       </div>
 
+      <section class="card" style="margin-top: 20px;">
+        <h3>Recent artifacts</h3>
+        <div id="recent-artifacts" class="muted">Loading recent artifacts...</div>
+        <div style="margin-top: 10px; font-size: 0.8rem; color: var(--muted);">
+          Source: <code>/api/artifacts?limit=5</code>
+        </div>
+      </section>
+
       <div class="card" style="margin-top: 20px;">
         <h3>Quick actions</h3>
         <div class="actions">
@@ -207,6 +215,13 @@
           <button onclick="showRepoIndex()">Workspace map</button>
           <button onclick="showRoutineStatus()">Routine status</button>
           <button onclick="showPlanStatus()">Plan status</button>
+          <button onclick="showReleaseStatus()">Release status</button>
+          <button onclick="showActionItems()">Action items</button>
+          <button onclick="showArtifactNavigation()">Artifacts</button>
+          <button onclick="showRoutineHistory()">Routine history</button>
+          <button onclick="showSprintRecap()">Sprint recap</button>
+          <button onclick="showFeatureParity()">Feature parity</button>
+          <button onclick="showProjectSnapshot()">Project snapshot</button>
         </div>
       </div>
     </div>
@@ -239,6 +254,38 @@
         document.getElementById("modal").classList.remove("open");
       }
 
+      async function loadRecentArtifacts() {
+        try {
+          const response = await fetch(`${API_BASE}/api/artifacts?limit=5`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+          const artifacts = data.artifacts || [];
+
+          const container = document.getElementById("recent-artifacts");
+          if (!artifacts.length) {
+            container.innerHTML = "No recent artifacts yet.";
+            return;
+          }
+
+          const html = artifacts
+            .slice(0, 5)
+            .map((artifact) => `
+              <div style="padding: 8px 0; border-bottom: 1px solid var(--border);">
+                <strong>${escapeHtml(artifact.name || artifact.type || "Artifact")}</strong>
+                <div style="color: var(--muted); font-size: 0.82rem; margin-top: 4px;">
+                  ${escapeHtml(artifact.type || "artifact")} • ${escapeHtml(artifact.created_at ? new Date(artifact.created_at).toLocaleString() : "recent")}
+                </div>
+              </div>
+            `)
+            .join("");
+
+          container.innerHTML = html;
+        } catch (error) {
+          showError(`Failed to load recent artifacts: ${error.message}`);
+          document.getElementById("recent-artifacts").innerHTML = "Unable to load recent artifacts.";
+        }
+      }
+
       async function loadDashboard() {
         try {
           const response = await fetch(`${API_BASE}/api/digest/weekly`);
@@ -258,6 +305,8 @@
           document.getElementById("commit-status").innerText = "Failed to load";
           document.getElementById("repo-status").innerText = "Failed to load";
         }
+
+        await loadRecentArtifacts();
       }
 
       async function showWeeklyDigest() {
@@ -386,6 +435,223 @@
           openModal("Plan status", html);
         } catch (error) {
           openModal("Plan status", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showReleaseStatus() {
+        try {
+          const response = await fetch(`${API_BASE}/api/dashboard/release-status`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          const readiness = data.readiness || {};
+          const notes = data.notes || {};
+
+          const statusColor = readiness.status === 'ready' ? 'var(--success)' : readiness.status === 'watch' ? 'var(--warning)' : 'var(--danger)';
+
+          let html = `
+            <h4>Release Readiness</h4>
+            <p><strong>Score:</strong> ${readiness.score}/100</p>
+            <p><strong>Status:</strong> <span style="color: ${statusColor}">${escapeHtml(readiness.status)}</span></p>
+          `;
+
+          if (readiness.blockers && readiness.blockers.length > 0) {
+            html += `<h5>Blockers:</h5><ul>`;
+            readiness.blockers.forEach(b => {
+              html += `<li>${escapeHtml(b)}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          html += `<h4>Release Notes</h4>`;
+          if (notes.summary) {
+            html += `<pre style="color: var(--muted); font-size: 0.85rem; overflow-x: auto; max-height: 400px;">${escapeHtml(notes.summary)}</pre>`;
+          }
+
+          openModal("Release status", html);
+        } catch (error) {
+          openModal("Release status", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showActionItems() {
+        try {
+          const context = prompt("Enter context (e.g., 'auth', 'payment'):");
+          if (!context) return;
+
+          const response = await fetch(`${API_BASE}/api/dashboard/action-items?context=${encodeURIComponent(context)}`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Action Items for "${escapeHtml(context)}"</h4>`;
+
+          if (data.checklists && data.checklists.length > 0) {
+            html += `<h5>Implementation Checklist:</h5><ol>`;
+            data.checklists.forEach(item => {
+              html += `<li>${escapeHtml(item)}</li>`;
+            });
+            html += `</ol>`;
+          }
+
+          if (data.related_files && data.related_files.length > 0) {
+            html += `<h5>Related Files:</h5><ul>`;
+            data.related_files.forEach(file => {
+              html += `<li><code style="color: var(--accent);">${escapeHtml(file)}</code></li>`;
+            });
+            html += `</ul>`;
+          }
+
+          if (data.suggested_checklist && data.suggested_checklist.length > 0) {
+            html += `<h5>Suggested Checklist:</h5><ul>`;
+            data.suggested_checklist.forEach(item => {
+              html += `<li>${escapeHtml(item)}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          openModal("Action items", html);
+        } catch (error) {
+          openModal("Action items", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showArtifactNavigation() {
+        try {
+          const response = await fetch(`${API_BASE}/api/artifacts/navigation`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Artifact Navigation</h4><p>Total artifacts: <strong>${data.total_count}</strong></p>`;
+
+          if (data.artifacts && data.artifacts.length > 0) {
+            html += `<h5>Recent Artifacts:</h5><ul>`;
+            data.artifacts.slice(0, 10).forEach(artifact => {
+              html += `<li><strong>${escapeHtml(artifact.name)}</strong> `;
+              html += `<span style="color: var(--muted);">(${escapeHtml(artifact.type)})</span></li>`;
+            });
+            html += `</ul>`;
+          } else {
+            html += `<p style="color: var(--muted);">No artifacts found.</p>`;
+          }
+
+          openModal("Artifacts", html);
+        } catch (error) {
+          openModal("Artifacts", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showRoutineHistory() {
+        try {
+          const response = await fetch(`${API_BASE}/api/routines/history`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Routine Execution History</h4><p>Total executions: <strong>${data.total_executions}</strong></p>`;
+
+          if (data.routines && data.routines.length > 0) {
+            html += `<h5>Recent Executions:</h5><ul>`;
+            data.routines.slice(0, 10).forEach(routine => {
+              const statusColor = routine.status === 'ok' ? 'var(--success)' : 'var(--warning)';
+              html += `<li><strong>${escapeHtml(routine.routine)}</strong> `;
+              html += `<span style="color: ${statusColor};">${escapeHtml(routine.status)}</span></li>`;
+            });
+            html += `</ul>`;
+          } else {
+            html += `<p style="color: var(--muted);">No routine executions found.</p>`;
+          }
+
+          openModal("Routines", html);
+        } catch (error) {
+          openModal("Routines", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showSprintRecap() {
+        try {
+          const response = await fetch(`${API_BASE}/api/sprint/recap`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Sprint Recap</h4>`;
+          html += `<p><strong>Summary:</strong> ${escapeHtml(data.summary)}</p>`;
+
+          if (data.features_implemented && data.features_implemented.length > 0) {
+            html += `<h5>Features Implemented:</h5><ul>`;
+            data.features_implemented.forEach(feature => {
+              html += `<li>${escapeHtml(feature)}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          if (data.tasks_completed && data.tasks_completed.length > 0) {
+            html += `<h5>Tasks Completed:</h5><ul>`;
+            data.tasks_completed.forEach(task => {
+              html += `<li>${escapeHtml(task)}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          openModal("Sprint recap", html);
+        } catch (error) {
+          openModal("Sprint recap", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showFeatureParity() {
+        try {
+          const response = await fetch(`${API_BASE}/api/features/parity`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          const parityColor = data.parity_score >= 75 ? 'var(--success)' : data.parity_score >= 50 ? 'var(--warning)' : 'var(--danger)';
+          let html = `<h4>Feature Parity</h4>`;
+          html += `<p><strong>Parity Score:</strong> <span style="color: ${parityColor};">${data.parity_score}%</span></p>`;
+
+          if (data.planned_features && data.planned_features.length > 0) {
+            html += `<h5>Planned Features:</h5><ul>`;
+            data.planned_features.forEach(feature => {
+              html += `<li>${escapeHtml(feature)}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          if (data.missing_features && data.missing_features.length > 0) {
+            html += `<h5>Missing Features:</h5><ul>`;
+            data.missing_features.forEach(feature => {
+              html += `<li>${escapeHtml(feature)}</li>`;
+            });
+            html += `</ul>`;
+          }
+
+          openModal("Feature parity", html);
+        } catch (error) {
+          openModal("Feature parity", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showProjectSnapshot() {
+        try {
+          const response = await fetch(`${API_BASE}/api/project/snapshot`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Project Snapshot</h4>`;
+          html += `<p><strong>Repository:</strong> ${escapeHtml(data.repo_name)}</p>`;
+          html += `<p><strong>Status:</strong> ${escapeHtml(data.workflow_status)}</p>`;
+          html += `<p><strong>Total Artifacts:</strong> ${data.total_artifacts}</p>`;
+
+          if (data.analysis_artifacts && data.analysis_artifacts.length > 0) {
+            html += `<h5>Recent Artifacts:</h5><ul>`;
+            data.analysis_artifacts.slice(0, 10).forEach(artifact => {
+              html += `<li><strong>${escapeHtml(artifact.name)}</strong> `;
+              html += `<span style="color: var(--muted);">(${escapeHtml(artifact.type)})</span></li>`;
+            });
+            html += `</ul>`;
+          }
+
+          openModal("Project snapshot", html);
+        } catch (error) {
+          openModal("Project snapshot", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
         }
       }
 
