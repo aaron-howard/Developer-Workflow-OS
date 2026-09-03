@@ -27,9 +27,9 @@ from app.server.repo_memory import build_feature_context, index_repo
 from app.server.routine_scheduler import RoutineScheduler, UnknownRoutineError
 from app.server.weekly_digest import generate_weekly_digest
 from app.server.connectors_audit import audit_connectors
-from app.server.repo_graph import generate_repo_graph
 from app.server.events.registry import get_event_registry
 from app.server.events.security import verify_hmac_signature
+
 
 
 def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook_url: str | None = None) -> Flask:
