@@ -23,10 +23,20 @@ class CommandCentre:
         self.routines_dir = self.memory_path / "routines"
         self.index_path = self.memory_path / "index.json"
 
+        self.runs_log_path = self.memory_path / "runs.log"
+
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
         self.routines_dir.mkdir(parents=True, exist_ok=True)
 
         self._load_index()
+
+    def log_run_event(self, action: str, model: str = "claude-sonnet-3.7", effort: str = "medium", status: str = "ok") -> None:
+        """Log skill button / routine execution event to .memory/runs.log matching Skills Level 3."""
+        timestamp = datetime.now(timezone.utc).isoformat()
+        line = f"[{timestamp}] action='{action}' model='{model}' effort='{effort}' status='{status}'\n"
+        with open(self.runs_log_path, "a", encoding="utf-8") as f:
+            f.write(line)
+
 
     def _load_index(self) -> None:
         """Load or initialize the artifact index."""

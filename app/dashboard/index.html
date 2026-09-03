@@ -3,230 +3,507 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Developer Workflow OS</title>
+    <title>Developer Workflow OS — Command Centre</title>
+    <!-- Include D3.js for Visual Second Brain interactive graph -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
     <style>
       :root {
-        --bg: #0b1020;
-        --panel: #121b2d;
-        --panel-alt: #18243a;
-        --text: #ebf1ff;
-        --muted: #9fb3d9;
-        --accent: #7dd3fc;
+        --bg-gradient: radial-gradient(circle at 50% 0%, #151f38 0%, #080c14 100%);
+        --panel: rgba(17, 26, 46, 0.75);
+        --panel-solid: #111a2e;
+        --panel-alt: rgba(27, 40, 69, 0.6);
+        --panel-hover: rgba(35, 52, 90, 0.8);
+        --text: #f0f4fd;
+        --muted: #94a3b8;
+        --accent: #38bdf8;
+        --accent-glow: rgba(56, 189, 248, 0.25);
         --success: #34d399;
         --warning: #fbbf24;
         --danger: #f87171;
-        --border: rgba(255,255,255,0.08);
+        --border: rgba(255, 255, 255, 0.08);
+        --border-highlight: rgba(56, 189, 248, 0.3);
+        --radius: 16px;
+        --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       }
 
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: var(--bg);
+        background: #080c14;
+        background-image: var(--bg-gradient);
         color: var(--text);
-        font-family: Arial, sans-serif;
+        font-family: var(--font);
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
       }
 
       .shell {
-        max-width: 1200px;
+        max-width: 1280px;
         margin: 0 auto;
-        padding: 32px 20px 48px;
+        padding: 32px 24px 64px;
       }
 
+      /* Topbar Header */
       .topbar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 24px;
+        margin-bottom: 28px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .header-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .logo-icon {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #38bdf8, #818cf8);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #080c14;
+        font-size: 1.1rem;
+        box-shadow: 0 0 16px var(--accent-glow);
       }
 
       .title {
-        font-size: 2rem;
+        font-size: 1.75rem;
         font-weight: 700;
+        letter-spacing: -0.02em;
+        background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .badge-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
       }
 
       .badge {
-        background: rgba(125, 211, 252, 0.12);
-        border: 1px solid var(--border);
+        background: rgba(56, 189, 248, 0.1);
+        border: 1px solid var(--border-highlight);
         color: var(--accent);
         border-radius: 999px;
-        padding: 8px 12px;
+        padding: 6px 14px;
         font-size: 0.8rem;
+        font-weight: 600;
+        backdrop-filter: blur(8px);
       }
 
-      .grid {
+      .pulse-dot {
+        width: 8px;
+        height: 8px;
+        background-color: var(--success);
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 8px var(--success);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; transform: scale(1.2); }
+        100% { opacity: 0.6; }
+      }
+
+      /* Grid Layout */
+      .grid-4 {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 20px;
       }
 
-      .card {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 18px;
-      }
-
-      .card h3 {
-        margin: 0 0 12px;
-        font-size: 1rem;
-      }
-
-      .metric {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 8px;
-      }
-
-      .muted {
-        color: var(--muted);
-      }
-
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
         margin-top: 20px;
       }
 
-      button {
+      @media (max-width: 900px) {
+        .grid-2 { grid-template-columns: 1fr; }
+      }
+
+      /* Glassmorphism Cards */
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        backdrop-filter: blur(16px);
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .card:hover {
+        border-color: rgba(255, 255, 255, 0.16);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+
+      .card h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+      }
+
+      .metric {
+        font-size: 2.2rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 6px;
+      }
+
+      .muted { color: var(--muted); font-size: 0.88rem; }
+      .subtext { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
+
+      /* Action Buttons */
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      button.btn {
         background: var(--panel-alt);
         border: 1px solid var(--border);
         color: var(--text);
-        border-radius: 10px;
-        padding: 10px 14px;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 0.88rem;
+        font-weight: 500;
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.2s ease;
+        text-align: left;
       }
 
-      button.primary {
-        background: rgba(125, 211, 252, 0.14);
+      button.btn:hover {
+        background: var(--panel-hover);
+        border-color: var(--border-highlight);
+        transform: translateY(-2px);
         color: var(--accent);
       }
 
-      ul {
-        padding-left: 18px;
-        margin: 12px 0 0;
+      button.btn.primary {
+        background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(129, 140, 248, 0.18));
+        border: 1px solid var(--border-highlight);
+        color: var(--accent);
+      }
+
+      button.btn.primary:hover {
+        background: linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(129, 140, 248, 0.3));
+        box-shadow: 0 0 16px var(--accent-glow);
+      }
+
+      /* Interactive Artifact List */
+      .artifact-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .artifact-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px 16px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.15s ease;
+      }
+
+      .artifact-item:hover {
+        background: rgba(56, 189, 248, 0.08);
+        border-color: var(--border-highlight);
+      }
+
+      .artifact-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text);
+      }
+
+      .artifact-meta {
+        font-size: 0.78rem;
         color: var(--muted);
       }
 
-      li + li { margin-top: 8px; }
+      /* Connector Health List */
+      .connector-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+      }
 
-      .loading {
+      .connector-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        font-size: 0.85rem;
+      }
+
+      .status-pill {
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .status-pill.connected { background: rgba(52, 211, 153, 0.15); color: var(--success); }
+      .status-pill.available { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
+
+      /* Visual Second Brain Graph Modal Canvas */
+      #brain-graph-container {
+        width: 100%;
+        height: 480px;
+        background: #060911;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .graph-controls {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 10;
+        display: flex;
+        gap: 8px;
+        background: rgba(17, 26, 46, 0.85);
+        padding: 8px;
+        border-radius: 8px;
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--border);
+      }
+
+      .graph-controls input {
+        background: #0b101d;
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        width: 180px;
+      }
+
+      .graph-filter-btn {
+        background: transparent;
+        border: 1px solid var(--border);
         color: var(--muted);
-        font-size: 0.9rem;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        cursor: pointer;
       }
 
-      .error {
-        color: var(--danger);
-        font-size: 0.9rem;
+      .graph-filter-btn.active {
+        background: rgba(56, 189, 248, 0.2);
+        color: var(--accent);
+        border-color: var(--border-highlight);
       }
 
+      /* Modal Styling */
       .modal {
         display: none;
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.7);
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(4, 7, 13, 0.8);
+        backdrop-filter: blur(8px);
         z-index: 1000;
-      }
-
-      .modal.open {
-        display: flex;
         align-items: center;
         justify-content: center;
       }
 
+      .modal.open { display: flex; }
+
       .modal-content {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 24px;
-        max-width: 600px;
-        max-height: 80vh;
+        background: var(--panel-solid);
+        border: 1px solid var(--border-highlight);
+        border-radius: 20px;
+        padding: 28px;
+        width: 90%;
+        max-width: 720px;
+        max-height: 85vh;
         overflow-y: auto;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
       }
 
       .modal-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
+        margin-bottom: 20px;
       }
 
-      .modal-header h2 {
-        margin: 0;
-      }
+      .modal-header h2 { margin: 0; font-size: 1.3rem; font-weight: 700; }
 
       .modal-close {
         background: transparent;
         border: none;
         color: var(--muted);
         cursor: pointer;
-        font-size: 1.5rem;
-        padding: 0;
+        font-size: 1.4rem;
+        padding: 4px 8px;
+        border-radius: 6px;
       }
 
-      .modal-close:hover {
+      .modal-close:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+      /* Form inputs in Option Picker */
+      .form-group {
+        margin-bottom: 16px;
+      }
+
+      .form-group label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .form-control {
+        width: 100%;
+        background: #090f1d;
+        border: 1px solid var(--border);
         color: var(--text);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 0.9rem;
       }
     </style>
   </head>
   <body>
     <div class="shell">
+      <!-- Topbar Header -->
       <div class="topbar">
-        <div class="title">Developer Workflow OS</div>
-        <div class="badge">MVP command centre</div>
+        <div class="header-title">
+          <div class="logo-icon">A</div>
+          <div class="title">Developer Workflow OS</div>
+        </div>
+        <div class="badge-group">
+          <div class="badge"><span class="pulse-dot"></span> Visual Command Centre</div>
+          <div class="badge" style="color: var(--muted); border-color: var(--border);">ARMS v1.0</div>
+        </div>
       </div>
 
-      <div class="grid">
+      <!-- 4 Core Metric & Status Cards -->
+      <div class="grid-4">
         <section class="card">
-          <h3>Release readiness</h3>
+          <div class="card-header">
+            <h3>Release Readiness</h3>
+            <span class="status-pill connected" id="release-pill">READY</span>
+          </div>
           <div class="metric" id="release-score" style="color: var(--success);">—</div>
-          <div class="muted" id="release-status">Loading...</div>
+          <div class="muted" id="release-status">Loading status...</div>
         </section>
 
         <section class="card">
-          <h3>Recent commits</h3>
+          <div class="card-header">
+            <h3>Recent Commits</h3>
+            <span class="status-pill connected">GIT</span>
+          </div>
           <div class="metric" id="commit-count">—</div>
-          <div class="muted" id="commit-status">Loading...</div>
+          <div class="muted" id="commit-status">Loading commits...</div>
         </section>
 
         <section class="card">
-          <h3>Repository</h3>
-          <div class="metric" id="repo-name">—</div>
-          <div class="muted" id="repo-status">Loading...</div>
+          <div class="card-header">
+            <h3>Repository Memory</h3>
+            <span class="status-pill connected">L2 ROUTERS</span>
+          </div>
+          <div class="metric" id="repo-name" style="font-size: 1.5rem; word-break: break-all;">—</div>
+          <div class="muted" id="repo-status">Loading repository...</div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>Connectors (L1)</h3>
+            <span class="status-pill connected" id="connectors-pill">AUDITED</span>
+          </div>
+          <div class="metric" id="connectors-count">—</div>
+          <div class="muted" id="connectors-status">Loading connectors...</div>
         </section>
       </div>
 
-      <section class="card" style="margin-top: 20px;">
-        <h3>Recent artifacts</h3>
-        <div id="recent-artifacts" class="muted">Loading recent artifacts...</div>
-        <div style="margin-top: 10px; font-size: 0.8rem; color: var(--muted);">
-          Source: <code>/api/artifacts?limit=5</code>
-        </div>
-      </section>
+      <!-- Grid Row 2: Recent Artifacts + Quick Actions -->
+      <div class="grid-2">
+        <section class="card">
+          <div class="card-header">
+            <h3>Recent artifacts (Click to View)</h3>
+            <button class="graph-filter-btn" onclick="showArtifactNavigation()">View All</button>
+          </div>
+          <div id="recent-artifacts" class="artifact-list">
+            <div class="muted">Loading recent artifacts...</div>
+          </div>
+        </section>
 
-      <div class="card" style="margin-top: 20px;">
-        <h3>Quick actions</h3>
-        <div class="actions">
-          <button class="primary" onclick="showWeeklyDigest()">Weekly digest</button>
-          <button onclick="showReleaseReadiness()">Release readiness</button>
-          <button onclick="showRepoIndex()">Workspace map</button>
-          <button onclick="showRoutineStatus()">Routine status</button>
-          <button onclick="showPlanStatus()">Plan status</button>
-          <button onclick="showReleaseStatus()">Release status</button>
-          <button onclick="showActionItems()">Action items</button>
-          <button onclick="showArtifactNavigation()">Artifacts</button>
-          <button onclick="showRoutineHistory()">Routine history</button>
-          <button onclick="showSprintRecap()">Sprint recap</button>
-          <button onclick="showFeatureParity()">Feature parity</button>
-          <button onclick="showProjectSnapshot()">Project snapshot</button>
-        </div>
+        <section class="card">
+          <div class="card-header">
+            <h3>Quick Actions (Headless Skills)</h3>
+            <span class="subtext">Skills L3 Enabled</span>
+          </div>
+          <div class="actions">
+            <button class="btn primary" onclick="triggerSkillWithOptions('weekly_digest', 'Weekly Digest', showWeeklyDigest)">
+              <span>Weekly Digest</span> ⚡
+            </button>
+            <button class="btn" onclick="triggerSkillWithOptions('release_readiness', 'Release Readiness', showReleaseReadiness)">
+              <span>Release Prep</span> 🚀
+            </button>
+            <button class="btn" onclick="showVisualSecondBrain()">
+              <span>Second Brain</span> 🧠
+            </button>
+            <button class="btn" onclick="triggerSkillWithOptions('connectors_audit', 'Connector Audit', showConnectorsAudit)">
+              <span>Connector Audit</span> 🔌
+            </button>
+            <button class="btn" onclick="triggerSkillWithOptions('action_items', 'Action Items', promptAndShowActionItems)">
+              <span>Action Items</span> 📋
+            </button>
+            <button class="btn" onclick="triggerSkillWithOptions('sprint_recap', 'Sprint Recap', showSprintRecap)">
+              <span>Sprint Recap</span> 📊
+            </button>
+            <button class="btn" onclick="showRoutineStatus()">
+              <span>Routines Board</span> ⏰
+            </button>
+            <button class="btn" onclick="showPlanStatus()">
+              <span>Plan Alignment</span> 🎯
+            </button>
+          </div>
+        </section>
       </div>
     </div>
 
-    <!-- Modal for displaying details -->
+    <!-- Main Detail Modal -->
     <div class="modal" id="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -237,12 +514,43 @@
       </div>
     </div>
 
+    <!-- Skill Option Picker Modal (Skills L3) -->
+    <div class="modal" id="option-modal">
+      <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-header">
+          <h2 id="option-modal-title">Run Skill Options</h2>
+          <button class="modal-close" onclick="closeOptionModal()">✕</button>
+        </div>
+        <div class="form-group">
+          <label>Target Agent Model:</label>
+          <select id="model-select" class="form-control">
+            <option value="claude-sonnet-3.7">Claude 3.7 Sonnet (Recommended)</option>
+            <option value="claude-opus-3.7">Claude 3.7 Opus (Deep Reasoning)</option>
+            <option value="gemini-3.6-flash">Gemini 3.6 Flash (Fast)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Effort Level:</label>
+          <select id="effort-select" class="form-control">
+            <option value="low">Low (Fast summary)</option>
+            <option value="medium" selected>Medium (Standard execution)</option>
+            <option value="high">High (Exhaustive analysis)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Optional Prompt Context:</label>
+          <input type="text" id="prompt-context-input" class="form-control" placeholder="e.g. auth, payments, branch main..." />
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button class="btn" onclick="closeOptionModal()">Cancel</button>
+          <button class="btn primary" id="option-run-btn">Execute Skill ⚡</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       const API_BASE = window.location.origin || "";
-
-      function showError(message) {
-        console.error(message);
-      }
+      let pendingSkillCallback = null;
 
       function openModal(title, content) {
         document.getElementById("modal-title").innerText = title;
@@ -254,6 +562,35 @@
         document.getElementById("modal").classList.remove("open");
       }
 
+      function openOptionModal(title, callback) {
+        document.getElementById("option-modal-title").innerText = `Run ${title}`;
+        pendingSkillCallback = callback;
+        document.getElementById("option-modal").classList.add("open");
+      }
+
+      function closeOptionModal() {
+        document.getElementById("option-modal").classList.remove("open");
+        pendingSkillCallback = null;
+      }
+
+      document.getElementById("option-run-btn").onclick = function() {
+        if (pendingSkillCallback) {
+          const model = document.getElementById("model-select").value;
+          const effort = document.getElementById("effort-select").value;
+          const contextInput = document.getElementById("prompt-context-input").value;
+          const cb = pendingSkillCallback;
+          closeOptionModal();
+          cb({ model, effort, contextInput });
+        }
+      };
+
+      function triggerSkillWithOptions(skillKey, title, executeFn) {
+        openOptionModal(title, (opts) => {
+          executeFn(opts);
+        });
+      }
+
+      // Recent Artifacts (Click to view full content)
       async function loadRecentArtifacts() {
         try {
           const response = await fetch(`${API_BASE}/api/artifacts?limit=5`);
@@ -263,29 +600,94 @@
 
           const container = document.getElementById("recent-artifacts");
           if (!artifacts.length) {
-            container.innerHTML = "No recent artifacts yet.";
+            container.innerHTML = `<div class="muted">No recent artifacts yet. Trigger a skill to generate one.</div>`;
             return;
           }
 
-          const html = artifacts
-            .slice(0, 5)
-            .map((artifact) => `
-              <div style="padding: 8px 0; border-bottom: 1px solid var(--border);">
-                <strong>${escapeHtml(artifact.name || artifact.type || "Artifact")}</strong>
-                <div style="color: var(--muted); font-size: 0.82rem; margin-top: 4px;">
-                  ${escapeHtml(artifact.type || "artifact")} • ${escapeHtml(artifact.created_at ? new Date(artifact.created_at).toLocaleString() : "recent")}
-                </div>
+          const html = artifacts.map(art => `
+            <div class="artifact-item" onclick="showArtifactDetail('${art.id}')">
+              <div>
+                <div class="artifact-name">${escapeHtml(art.name || art.type || "Artifact")}</div>
+                <div class="artifact-meta">${escapeHtml(art.type || "artifact")} • ${new Date(art.created_at).toLocaleString()}</div>
               </div>
-            `)
-            .join("");
+              <span class="muted" style="font-size: 0.8rem;">View ➔</span>
+            </div>
+          `).join("");
 
           container.innerHTML = html;
         } catch (error) {
-          showError(`Failed to load recent artifacts: ${error.message}`);
-          document.getElementById("recent-artifacts").innerHTML = "Unable to load recent artifacts.";
+          document.getElementById("recent-artifacts").innerHTML = `<div class="error">Failed to load artifacts.</div>`;
         }
       }
 
+      async function showArtifactDetail(artifactId) {
+        try {
+          const response = await fetch(`${API_BASE}/api/artifacts/${artifactId}`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const art = await response.json();
+
+          let contentHtml = "";
+          if (typeof art.content === "object") {
+            contentHtml = `<pre style="background: #090f1d; padding: 14px; border-radius: 8px; overflow-x: auto; color: var(--accent);">${escapeHtml(JSON.stringify(art.content, null, 2))}</pre>`;
+          } else {
+            contentHtml = `<pre style="background: #090f1d; padding: 14px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap;">${escapeHtml(String(art.content))}</pre>`;
+          }
+
+          const html = `
+            <p><strong>Type:</strong> ${escapeHtml(art.type)} | <strong>Created:</strong> ${new Date(art.created_at).toLocaleString()}</p>
+            ${contentHtml}
+          `;
+          openModal(art.name || "Artifact Detail", html);
+        } catch (error) {
+          openModal("Artifact Detail", `<p class="error">Failed to load artifact details: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      // Connectors Audit (Applications L1)
+      async function loadConnectorsAudit() {
+        try {
+          const response = await fetch(`${API_BASE}/api/connectors/audit`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          document.getElementById("connectors-count").innerText = `${data.connected_count} / ${data.total_count}`;
+          document.getElementById("connectors-status").innerText = `${data.total_count} total integrations checked`;
+        } catch (error) {
+          document.getElementById("connectors-status").innerText = "Failed to load audit";
+        }
+      }
+
+      async function showConnectorsAudit(opts) {
+        try {
+          const response = await fetch(`${API_BASE}/api/connectors/audit`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Active & Available Connectors</h4><div class="connector-grid">`;
+          data.connectors.forEach(c => {
+            html += `
+              <div class="connector-row">
+                <div>
+                  <strong>${escapeHtml(c.name)}</strong> <span class="muted">(${escapeHtml(c.type)})</span>
+                  <div class="subtext">${escapeHtml(c.details)}</div>
+                </div>
+                <span class="status-pill ${c.status}">${escapeHtml(c.status)}</span>
+              </div>
+            `;
+          });
+          html += `</div><h4>Recommended Connector Upgrades</h4><ul>`;
+          data.recommendations.forEach(r => {
+            html += `<li><strong>${escapeHtml(r.name)}</strong>: ${escapeHtml(r.unlocks)}<br/><code style="color: var(--accent);">${escapeHtml(r.setup)}</code></li>`;
+          });
+          html += `</ul>`;
+
+          openModal("Applications & Connector Audit", html);
+        } catch (error) {
+          openModal("Connector Audit", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      // Dashboard Initial Load
       async function loadDashboard() {
         try {
           const response = await fetch(`${API_BASE}/api/digest/weekly`);
@@ -293,23 +695,156 @@
           const data = await response.json();
 
           document.getElementById("release-score").innerText = `${data.release_score}%`;
-          document.getElementById("release-status").innerText =
-            `Status: ${data.release_status}` + (data.blockers.length > 0 ? ` (${data.blockers.length} blockers)` : "");
+          document.getElementById("release-status").innerText = `Status: ${data.release_status}` + (data.blockers.length > 0 ? ` (${data.blockers.length} blockers)` : "");
           document.getElementById("commit-count").innerText = data.total_commits || "0";
-          document.getElementById("commit-status").innerText = "Total commits on main";
+          document.getElementById("commit-status").innerText = "Main branch commits";
           document.getElementById("repo-name").innerText = data.repo_name || "—";
-          document.getElementById("repo-status").innerText = `${data.branch_count} branches`;
+          document.getElementById("repo-status").innerText = `${data.branch_count} total branches`;
         } catch (error) {
-          showError(`Failed to load dashboard: ${error.message}`);
           document.getElementById("release-status").innerText = "Failed to load";
-          document.getElementById("commit-status").innerText = "Failed to load";
-          document.getElementById("repo-status").innerText = "Failed to load";
         }
 
         await loadRecentArtifacts();
+        await loadConnectorsAudit();
       }
 
-      async function showWeeklyDigest() {
+      // Visual Second Brain Graph Renderer (Memory L3)
+      async function showVisualSecondBrain() {
+        try {
+          const response = await fetch(`${API_BASE}/api/repo/graph`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const graphData = await response.json();
+
+          const modalHtml = `
+            <p class="muted">Zoomable visual map showing workspace files, routers, and directory relationships.</p>
+            <div id="brain-graph-container">
+              <div class="graph-controls">
+                <input type="text" id="graph-search" placeholder="Search files as you type..." oninput="filterGraphNodes()" />
+                <button class="graph-filter-btn active" onclick="setGraphCategory('all', this)">All</button>
+                <button class="graph-filter-btn" onclick="setGraphCategory('code', this)">Code</button>
+                <button class="graph-filter-btn" onclick="setGraphCategory('doc', this)">Docs</button>
+                <button class="graph-filter-btn" onclick="setGraphCategory('skill', this)">Skills</button>
+              </div>
+              <svg id="brain-svg" width="100%" height="100%"></svg>
+            </div>
+            <div id="node-preview" style="margin-top: 14px; padding: 12px; background: #090f1d; border-radius: 8px; font-size: 0.85rem;" class="muted">
+              Click any node in the visual second brain to inspect path & details.
+            </div>
+          `;
+
+          openModal("Visual Second Brain (Memory L3)", modalHtml);
+          setTimeout(() => renderD3Graph(graphData), 100);
+        } catch (error) {
+          openModal("Visual Second Brain", `<p class="error">Failed to load repo graph: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      let d3Simulation = null;
+      let globalGraphData = null;
+      let activeCategory = "all";
+
+      function renderD3Graph(data) {
+        globalGraphData = data;
+        const container = document.getElementById("brain-graph-container");
+        if (!container) return;
+
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        const svg = d3.select("#brain-svg");
+        svg.selectAll("*").remove();
+
+        const g = svg.append("g");
+
+        // Add Zoom behaviour
+        const zoom = d3.zoom().scaleExtent([0.3, 3]).on("zoom", (event) => {
+          g.attr("transform", event.transform);
+        });
+        svg.call(zoom);
+
+        const nodes = data.nodes.map(d => Object.create(d));
+        const links = data.links.map(d => Object.create(d));
+
+        d3Simulation = d3.forceSimulation(nodes)
+          .force("link", d3.forceLink(links).id(d => d.id).distance(70))
+          .force("charge", d3.forceManyBody().strength(-180))
+          .force("center", d3.forceCenter(width / 2, height / 2));
+
+        const link = g.append("g")
+          .attr("stroke", "rgba(255,255,255,0.12)")
+          .attr("stroke-opacity", 0.6)
+          .selectAll("line")
+          .data(links)
+          .join("line")
+          .attr("stroke-width", d => d.type === "references" ? 2 : 1)
+          .attr("stroke-dasharray", d => d.type === "references" ? "4 4" : "0");
+
+        const node = g.append("g")
+          .selectAll("g")
+          .data(nodes)
+          .join("g")
+          .style("cursor", "pointer")
+          .on("click", (event, d) => inspectNode(d));
+
+        node.append("circle")
+          .attr("r", d => d.type === "root" ? 14 : d.type === "area" ? 10 : 6)
+          .attr("fill", d => {
+            if (d.type === "root") return "#38bdf8";
+            if (d.type === "area") return "#818cf8";
+            if (d.category === "router") return "#fbbf24";
+            if (d.category === "code") return "#34d399";
+            if (d.category === "doc") return "#38bdf8";
+            return "#94a3b8";
+          });
+
+        node.append("text")
+          .text(d => d.label)
+          .attr("x", 10)
+          .attr("y", 4)
+          .attr("fill", "#cbd5e1")
+          .attr("font-size", "10px");
+
+        d3Simulation.on("tick", () => {
+          link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+
+          node
+            .attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+      }
+
+      function inspectNode(nodeData) {
+        const preview = document.getElementById("node-preview");
+        if (!preview) return;
+
+        preview.innerHTML = `
+          <strong>${escapeHtml(nodeData.label)}</strong> <span style="color: var(--accent);">(${escapeHtml(nodeData.category)})</span>
+          <div>${escapeHtml(nodeData.extra || "")}</div>
+          ${nodeData.path ? `<div style="margin-top: 6px;"><code style="color: var(--success);">${escapeHtml(nodeData.path)}</code> <button class="graph-filter-btn" onclick="navigator.clipboard.writeText('${escapeHtml(nodeData.path)}')">Copy Path</button></div>` : ""}
+        `;
+      }
+
+      function setGraphCategory(cat, btn) {
+        activeCategory = cat;
+        document.querySelectorAll(".graph-filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        filterGraphNodes();
+      }
+
+      function filterGraphNodes() {
+        const search = (document.getElementById("graph-search")?.value || "").toLowerCase();
+        d3.selectAll("#brain-svg g g").style("opacity", d => {
+          const matchesSearch = !search || d.label.toLowerCase().includes(search) || (d.path && d.path.toLowerCase().includes(search));
+          const matchesCat = activeCategory === "all" || d.category === activeCategory || d.type === "root";
+          return (matchesSearch && matchesCat) ? 1 : 0.15;
+        });
+      }
+
+      // Feature Skill Implementations
+      async function showWeeklyDigest(opts = {}) {
         try {
           const response = await fetch(`${API_BASE}/api/digest/weekly`);
           if (!response.ok) throw new Error(`API error: ${response.status}`);
@@ -318,19 +853,16 @@
           let html = `<pre style="color: var(--muted); font-size: 0.85rem; overflow-x: auto;">${escapeHtml(data.summary)}</pre>`;
           if (data.blockers.length > 0) {
             html += `<h4>Blockers:</h4><ul>`;
-            data.blockers.forEach(b => {
-              html += `<li>${escapeHtml(b)}</li>`;
-            });
+            data.blockers.forEach(b => html += `<li>${escapeHtml(b)}</li>`);
             html += `</ul>`;
           }
-
-          openModal("Weekly digest", html);
+          openModal("Weekly Digest", html);
         } catch (error) {
-          openModal("Weekly digest", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+          openModal("Weekly Digest", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
         }
       }
 
-      async function showReleaseReadiness() {
+      async function showReleaseReadiness(opts = {}) {
         try {
           const response = await fetch(`${API_BASE}/api/release/readiness`);
           if (!response.ok) throw new Error(`API error: ${response.status}`);
@@ -338,51 +870,44 @@
 
           let html = `
             <p><strong>Score:</strong> ${data.score}/100</p>
-            <p><strong>Status:</strong> <span style="color: ${data.status === 'ready' ? 'var(--success)' : data.status === 'watch' ? 'var(--warning)' : 'var(--danger)'}">${data.status}</span></p>
+            <p><strong>Status:</strong> <span style="color: ${data.status === 'ready' ? 'var(--success)' : 'var(--warning)'}">${data.status}</span></p>
             <pre style="color: var(--muted); font-size: 0.85rem; overflow-x: auto;">${escapeHtml(data.summary)}</pre>
           `;
-
-          if (data.blockers.length > 0) {
-            html += `<h4>Blockers:</h4><ul>`;
-            data.blockers.forEach(b => {
-              html += `<li>${escapeHtml(b)}</li>`;
-            });
-            html += `</ul>`;
-          }
-
-          openModal("Release readiness", html);
+          openModal("Release Readiness", html);
         } catch (error) {
-          openModal("Release readiness", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+          openModal("Release Readiness", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
         }
       }
 
-      async function showRepoIndex() {
+      async function promptAndShowActionItems(opts = {}) {
+        const ctx = opts.contextInput || prompt("Enter context keyword (e.g. auth, payment):");
+        if (!ctx) return;
+
         try {
-          const response = await fetch(`${API_BASE}/api/repo/index`);
+          const response = await fetch(`${API_BASE}/api/dashboard/action-items?context=${encodeURIComponent(ctx)}`);
           if (!response.ok) throw new Error(`API error: ${response.status}`);
           const data = await response.json();
 
-          let html = `<h4>Repository: ${escapeHtml(data.repo_name)}</h4>`;
-
-          if (data.areas && data.areas.length > 0) {
-            html += `<h5>Areas:</h5><ul>`;
-            data.areas.forEach(a => {
-              html += `<li>${escapeHtml(a.name)} <span style="color: var(--muted);">(${escapeHtml(a.path)})</span></li>`;
-            });
-            html += `</ul>`;
+          let html = `<h4>Action Items for "${escapeHtml(ctx)}"</h4>`;
+          if (data.checklists) {
+            html += `<h5>Checklist:</h5><ol>${data.checklists.map(i => `<li>${escapeHtml(i)}</li>`).join("")}</ol>`;
           }
-
-          if (data.key_files && data.key_files.length > 0) {
-            html += `<h5>Key files:</h5><ul>`;
-            data.key_files.forEach(f => {
-              html += `<li><code style="color: var(--accent);">${escapeHtml(f)}</code></li>`;
-            });
-            html += `</ul>`;
-          }
-
-          openModal("Workspace map", html);
+          openModal("Action Items", html);
         } catch (error) {
-          openModal("Workspace map", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+          openModal("Action Items", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+        }
+      }
+
+      async function showSprintRecap(opts = {}) {
+        try {
+          const response = await fetch(`${API_BASE}/api/sprint/recap`);
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          const data = await response.json();
+
+          let html = `<h4>Sprint Recap</h4><p>${escapeHtml(data.summary)}</p>`;
+          openModal("Sprint Recap", html);
+        } catch (error) {
+          openModal("Sprint Recap", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
         }
       }
 
@@ -392,15 +917,12 @@
           if (!response.ok) throw new Error(`API error: ${response.status}`);
           const data = await response.json();
 
-          let html = `<h4>Registered routines</h4><ul>`;
-          data.routines.forEach(r => {
-            html += `<li><strong>${escapeHtml(r.name)}</strong> — ${escapeHtml(r.interval)}${r.description ? ` — ${escapeHtml(r.description)}` : ""}</li>`;
-          });
+          let html = `<h4>Registered Scheduler Routines (L1)</h4><ul>`;
+          data.routines.forEach(r => html += `<li><strong>${escapeHtml(r.name)}</strong> — ${escapeHtml(r.interval)}</li>`);
           html += `</ul>`;
-
-          openModal("Routine status", html);
+          openModal("Routines Board", html);
         } catch (error) {
-          openModal("Routine status", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+          openModal("Routines Board", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
         }
       }
 
@@ -410,108 +932,10 @@
           if (!response.ok) throw new Error(`API error: ${response.status}`);
           const data = await response.json();
 
-          const statusColor = data.status === 'complete' ? 'var(--success)' : 'var(--warning)';
-          let html = `
-            <p><strong>Status:</strong> <span style="color: ${statusColor}">${escapeHtml(data.status)}</span></p>
-            <p><strong>Sections checked:</strong> ${escapeHtml(String(data.sections_checked))}</p>
-          `;
-
-          if (data.coverage) {
-            html += `<h4>Coverage:</h4><ul>`;
-            Object.entries(data.coverage).forEach(([name, value]) => {
-              html += `<li><strong>${escapeHtml(name)}</strong>: ${value ? 'implemented' : 'pending'}</li>`;
-            });
-            html += `</ul>`;
-          }
-
-          if (data.missing && data.missing.length > 0) {
-            html += `<h4>Missing:</h4><ul>`;
-            data.missing.forEach(item => {
-              html += `<li>${escapeHtml(item)}</li>`;
-            });
-            html += `</ul>`;
-          }
-
-          openModal("Plan status", html);
+          let html = `<h4>Plan Alignment Status</h4><p>Status: <strong>${escapeHtml(data.status)}</strong></p>`;
+          openModal("Plan Alignment", html);
         } catch (error) {
-          openModal("Plan status", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
-        }
-      }
-
-      async function showReleaseStatus() {
-        try {
-          const response = await fetch(`${API_BASE}/api/dashboard/release-status`);
-          if (!response.ok) throw new Error(`API error: ${response.status}`);
-          const data = await response.json();
-
-          const readiness = data.readiness || {};
-          const notes = data.notes || {};
-
-          const statusColor = readiness.status === 'ready' ? 'var(--success)' : readiness.status === 'watch' ? 'var(--warning)' : 'var(--danger)';
-
-          let html = `
-            <h4>Release Readiness</h4>
-            <p><strong>Score:</strong> ${readiness.score}/100</p>
-            <p><strong>Status:</strong> <span style="color: ${statusColor}">${escapeHtml(readiness.status)}</span></p>
-          `;
-
-          if (readiness.blockers && readiness.blockers.length > 0) {
-            html += `<h5>Blockers:</h5><ul>`;
-            readiness.blockers.forEach(b => {
-              html += `<li>${escapeHtml(b)}</li>`;
-            });
-            html += `</ul>`;
-          }
-
-          html += `<h4>Release Notes</h4>`;
-          if (notes.summary) {
-            html += `<pre style="color: var(--muted); font-size: 0.85rem; overflow-x: auto; max-height: 400px;">${escapeHtml(notes.summary)}</pre>`;
-          }
-
-          openModal("Release status", html);
-        } catch (error) {
-          openModal("Release status", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
-        }
-      }
-
-      async function showActionItems() {
-        try {
-          const context = prompt("Enter context (e.g., 'auth', 'payment'):");
-          if (!context) return;
-
-          const response = await fetch(`${API_BASE}/api/dashboard/action-items?context=${encodeURIComponent(context)}`);
-          if (!response.ok) throw new Error(`API error: ${response.status}`);
-          const data = await response.json();
-
-          let html = `<h4>Action Items for "${escapeHtml(context)}"</h4>`;
-
-          if (data.checklists && data.checklists.length > 0) {
-            html += `<h5>Implementation Checklist:</h5><ol>`;
-            data.checklists.forEach(item => {
-              html += `<li>${escapeHtml(item)}</li>`;
-            });
-            html += `</ol>`;
-          }
-
-          if (data.related_files && data.related_files.length > 0) {
-            html += `<h5>Related Files:</h5><ul>`;
-            data.related_files.forEach(file => {
-              html += `<li><code style="color: var(--accent);">${escapeHtml(file)}</code></li>`;
-            });
-            html += `</ul>`;
-          }
-
-          if (data.suggested_checklist && data.suggested_checklist.length > 0) {
-            html += `<h5>Suggested Checklist:</h5><ul>`;
-            data.suggested_checklist.forEach(item => {
-              html += `<li>${escapeHtml(item)}</li>`;
-            });
-            html += `</ul>`;
-          }
-
-          openModal("Action items", html);
-        } catch (error) {
-          openModal("Action items", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+          openModal("Plan Alignment", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
         }
       }
 
@@ -521,162 +945,31 @@
           if (!response.ok) throw new Error(`API error: ${response.status}`);
           const data = await response.json();
 
-          let html = `<h4>Artifact Navigation</h4><p>Total artifacts: <strong>${data.total_count}</strong></p>`;
-
-          if (data.artifacts && data.artifacts.length > 0) {
-            html += `<h5>Recent Artifacts:</h5><ul>`;
-            data.artifacts.slice(0, 10).forEach(artifact => {
-              html += `<li><strong>${escapeHtml(artifact.name)}</strong> `;
-              html += `<span style="color: var(--muted);">(${escapeHtml(artifact.type)})</span></li>`;
-            });
-            html += `</ul>`;
-          } else {
-            html += `<p style="color: var(--muted);">No artifacts found.</p>`;
-          }
-
-          openModal("Artifacts", html);
+          let html = `<h4>Artifact Navigation Store</h4><p>Total items: ${data.total_count}</p><ul>`;
+          (data.artifacts || []).forEach(a => {
+            html += `<li style="cursor: pointer; padding: 4px 0;" onclick="showArtifactDetail('${a.id}')"><strong>${escapeHtml(a.name)}</strong> <span class="muted">(${escapeHtml(a.type)})</span></li>`;
+          });
+          html += `</ul>`;
+          openModal("Artifact Navigation", html);
         } catch (error) {
-          openModal("Artifacts", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
-        }
-      }
-
-      async function showRoutineHistory() {
-        try {
-          const response = await fetch(`${API_BASE}/api/routines/history`);
-          if (!response.ok) throw new Error(`API error: ${response.status}`);
-          const data = await response.json();
-
-          let html = `<h4>Routine Execution History</h4><p>Total executions: <strong>${data.total_executions}</strong></p>`;
-
-          if (data.routines && data.routines.length > 0) {
-            html += `<h5>Recent Executions:</h5><ul>`;
-            data.routines.slice(0, 10).forEach(routine => {
-              const statusColor = routine.status === 'ok' ? 'var(--success)' : 'var(--warning)';
-              html += `<li><strong>${escapeHtml(routine.routine)}</strong> `;
-              html += `<span style="color: ${statusColor};">${escapeHtml(routine.status)}</span></li>`;
-            });
-            html += `</ul>`;
-          } else {
-            html += `<p style="color: var(--muted);">No routine executions found.</p>`;
-          }
-
-          openModal("Routines", html);
-        } catch (error) {
-          openModal("Routines", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
-        }
-      }
-
-      async function showSprintRecap() {
-        try {
-          const response = await fetch(`${API_BASE}/api/sprint/recap`);
-          if (!response.ok) throw new Error(`API error: ${response.status}`);
-          const data = await response.json();
-
-          let html = `<h4>Sprint Recap</h4>`;
-          html += `<p><strong>Summary:</strong> ${escapeHtml(data.summary)}</p>`;
-
-          if (data.features_implemented && data.features_implemented.length > 0) {
-            html += `<h5>Features Implemented:</h5><ul>`;
-            data.features_implemented.forEach(feature => {
-              html += `<li>${escapeHtml(feature)}</li>`;
-            });
-            html += `</ul>`;
-          }
-
-          if (data.tasks_completed && data.tasks_completed.length > 0) {
-            html += `<h5>Tasks Completed:</h5><ul>`;
-            data.tasks_completed.forEach(task => {
-              html += `<li>${escapeHtml(task)}</li>`;
-            });
-            html += `</ul>`;
-          }
-
-          openModal("Sprint recap", html);
-        } catch (error) {
-          openModal("Sprint recap", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
-        }
-      }
-
-      async function showFeatureParity() {
-        try {
-          const response = await fetch(`${API_BASE}/api/features/parity`);
-          if (!response.ok) throw new Error(`API error: ${response.status}`);
-          const data = await response.json();
-
-          const parityColor = data.parity_score >= 75 ? 'var(--success)' : data.parity_score >= 50 ? 'var(--warning)' : 'var(--danger)';
-          let html = `<h4>Feature Parity</h4>`;
-          html += `<p><strong>Parity Score:</strong> <span style="color: ${parityColor};">${data.parity_score}%</span></p>`;
-
-          if (data.planned_features && data.planned_features.length > 0) {
-            html += `<h5>Planned Features:</h5><ul>`;
-            data.planned_features.forEach(feature => {
-              html += `<li>${escapeHtml(feature)}</li>`;
-            });
-            html += `</ul>`;
-          }
-
-          if (data.missing_features && data.missing_features.length > 0) {
-            html += `<h5>Missing Features:</h5><ul>`;
-            data.missing_features.forEach(feature => {
-              html += `<li>${escapeHtml(feature)}</li>`;
-            });
-            html += `</ul>`;
-          }
-
-          openModal("Feature parity", html);
-        } catch (error) {
-          openModal("Feature parity", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
-        }
-      }
-
-      async function showProjectSnapshot() {
-        try {
-          const response = await fetch(`${API_BASE}/api/project/snapshot`);
-          if (!response.ok) throw new Error(`API error: ${response.status}`);
-          const data = await response.json();
-
-          let html = `<h4>Project Snapshot</h4>`;
-          html += `<p><strong>Repository:</strong> ${escapeHtml(data.repo_name)}</p>`;
-          html += `<p><strong>Status:</strong> ${escapeHtml(data.workflow_status)}</p>`;
-          html += `<p><strong>Total Artifacts:</strong> ${data.total_artifacts}</p>`;
-
-          if (data.analysis_artifacts && data.analysis_artifacts.length > 0) {
-            html += `<h5>Recent Artifacts:</h5><ul>`;
-            data.analysis_artifacts.slice(0, 10).forEach(artifact => {
-              html += `<li><strong>${escapeHtml(artifact.name)}</strong> `;
-              html += `<span style="color: var(--muted);">(${escapeHtml(artifact.type)})</span></li>`;
-            });
-            html += `</ul>`;
-          }
-
-          openModal("Project snapshot", html);
-        } catch (error) {
-          openModal("Project snapshot", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
+          openModal("Artifact Navigation", `<p class="error">Error: ${escapeHtml(error.message)}</p>`);
         }
       }
 
       function escapeHtml(text) {
-        const map = {
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          '"': '&quot;',
-          "'": '&#039;'
-        };
-        return text.replace(/[&<>"']/g, m => map[m]);
+        if (!text) return "";
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
       }
 
-      // Load dashboard on page load
       window.addEventListener("DOMContentLoaded", loadDashboard);
-
-      // Refresh every 30 seconds
       setInterval(loadDashboard, 30000);
 
-      // Close modal on background click
       document.getElementById("modal").addEventListener("click", function(e) {
-        if (e.target === this) {
-          closeModal();
-        }
+        if (e.target === this) closeModal();
+      });
+      document.getElementById("option-modal").addEventListener("click", function(e) {
+        if (e.target === this) closeOptionModal();
       });
     </script>
   </body>
