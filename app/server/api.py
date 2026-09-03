@@ -50,6 +50,12 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
         dashboard_path = Path(__file__).resolve().parents[1] / "dashboard" / "index.html"
         return send_file(dashboard_path, mimetype="text/html")
 
+    @app.route("/api/v1/health", methods=["GET"])
+    def health_check():
+        """Health check endpoint for monitoring and Cloudflare Workers probe."""
+        return jsonify({"status": "healthy", "service": "Developer Workflow OS"}), 200
+
+
     @app.route("/api/connectors/audit", methods=["GET"])
     def connectors_audit():
         """Return audit of connected applications and MCP servers (Applications L1)."""
