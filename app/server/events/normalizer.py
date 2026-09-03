@@ -589,3 +589,179 @@ class PlaywrightNormalizer(BaseNormalizer):
         )
 
 
+class DatadogNormalizer(BaseNormalizer):
+    """
+    Normalizer for Datadog Monitor webhook alerts and incident events.
+    """
+    def normalize(
+        self,
+        raw_payload: Dict[str, Any],
+        category: str,
+        provider: str
+    ) -> SDLCEvent:
+        alert_type = (raw_payload.get("alert_type") or raw_payload.get("event_type") or "error").lower()
+        title = raw_payload.get("title") or raw_payload.get("event_title") or "Datadog Alert"
+        hostname = raw_payload.get("hostname") or "datadog-agent"
+
+        if alert_type in ("error", "alert", "critical"):
+            evt = SDLCEventType.INCIDENT_CREATED
+            delta = -15.0
+            risk = SDLCRiskLevel.CRITICAL
+            msg = f"Datadog Monitor Alert [{alert_type.upper()}]: {title}"
+        elif alert_type == "warning":
+            evt = SDLCEventType.SECURITY_ALERT
+            delta = -5.0
+            risk = SDLCRiskLevel.MEDIUM
+            msg = f"Datadog Monitor Warning: {title}"
+        else:
+            evt = SDLCEventType.INCIDENT_RESOLVED
+            delta = 10.0
+            risk = SDLCRiskLevel.LOW
+            msg = f"Datadog Monitor Recovered: {title}"
+
+        return SDLCEvent(
+            source="datadog",
+            category=SDLCCategory.OBSERVABILITY,
+            event_type=evt,
+            repository=str(hostname),
+            actor=SDLCActor(name="datadog-bot"),
+            payload=raw_payload,
+            health_impact=SDLCHealthImpact(
+                score_delta=delta,
+                risk_level=risk,
+                message=msg
+            )
+        )
+
+
+class SentryNormalizer(BaseNormalizer):
+    """
+    Normalizer for Sentry exception webhooks and issue webhooks.
+    """
+    def normalize(
+        self,
+        raw_payload: Dict[str, Any],
+        category: str,
+        provider: str
+    ) -> SDLCEvent:
+        action = (raw_payload.get("action") or "created").lower()
+        issue = raw_payload.get("issue") or raw_payload.get("data", {}).get("issue") or {}
+        
+        title = issue.get("title") or raw_payload.get("title") or "Unhandled Exception"
+        culprit = issue.get("culprit") or raw_payload.get("culprit") or "app-core"
+
+        if action in ("resolved", "ignored"):
+            evt = SDLCEventType.INCIDENT_RESOLVED
+            delta = 8.0
+            risk = SDLCRiskLevel.LOW
+            msg = f"Sentry issue resolved: {title}"
+        else:
+            evt = SDLCEventType.INCIDENT_CREATED
+            delta = -12.0
+            risk = SDLCRiskLevel.HIGH
+            msg = f"Sentry exception in {culprit}: {title}"
+
+        return SDLCEvent(
+            source="sentry",
+            category=SDLCCategory.OBSERVABILITY,
+            event_type=evt,
+            repository=str(culprit),
+            actor=SDLCActor(name="sentry-bot"),
+            payload=raw_payload,
+            health_impact=SDLCHealthImpact(
+                score_delta=delta,
+                risk_level=risk,
+                message=msg
+            )
+        )
+
+
+class PagerDutyNormalizer(BaseNormalizer):
+    """
+    Normalizer for PagerDuty v3 incident webhook events.
+    """
+    def normalize(
+        self,
+        raw_payload: Dict[str, Any],
+        category: str,
+        provider: str
+    ) -> SDLCEvent:
+        event_data = raw_payload.get("event") or raw_payload
+        event_type = (event_data.get("event_type") or raw_payload.get("event_type") or "incident.triggered").lower()
+        incident = event_data.get("data") or raw_payload.get("incident") or {}
+        
+        title = incident.get("title") or incident.get("summary") or "Production Incident"
+        service = incident.get("service", {}).get("summary") or "prod-service"
+
+        if "triggered" in event_type:
+            evt = SDLCEventType.INCIDENT_CREATED
+            delta = -20.0
+            risk = SDLCRiskLevel.CRITICAL
+            msg = f"PagerDuty CRITICAL Incident triggered for {service}: {title}"
+        elif "resolved" in event_type:
+            evt = SDLCEventType.INCIDENT_RESOLVED
+            delta = 10.0
+            risk = SDLCRiskLevel.LOW
+            msg = f"PagerDuty Incident resolved for {service}: {title}"
+        else:
+            evt = SDLCEventType.ISSUE_UPDATED
+            delta = 0.0
+            risk = SDLCRiskLevel.MEDIUM
+            msg = f"PagerDuty Incident updated ({event_type}): {title}"
+
+        return SDLCEvent(
+            source="pagerduty",
+            category=SDLCCategory.OBSERVABILITY,
+            event_type=evt,
+            repository=str(service),
+            actor=SDLCActor(name="pagerduty-bot"),
+            payload=raw_payload,
+            health_impact=SDLCHealthImpact(
+                score_delta=delta,
+                risk_level=risk,
+                message=msg
+            )
+        )
+
+
+class NewRelicNormalizer(BaseNormalizer):
+    """
+    Normalizer for New Relic APM and Infrastructure incident alerts.
+    """
+    def normalize(
+        self,
+        raw_payload: Dict[str, Any],
+        category: str,
+        provider: str
+    ) -> SDLCEvent:
+        state = (raw_payload.get("current_state") or raw_payload.get("state") or "open").lower()
+        condition_name = raw_payload.get("condition_name") or raw_payload.get("policy_name") or "APM Alert"
+        target = raw_payload.get("targets", [{}])[0].get("name") if isinstance(raw_payload.get("targets"), list) else "newrelic-app"
+
+        if state in ("open", "active", "triggered"):
+            evt = SDLCEventType.INCIDENT_CREATED
+            delta = -10.0
+            risk = SDLCRiskLevel.HIGH
+            msg = f"New Relic Incident OPEN for {target}: {condition_name}"
+        else:
+            evt = SDLCEventType.INCIDENT_RESOLVED
+            delta = 8.0
+            risk = SDLCRiskLevel.LOW
+            msg = f"New Relic Incident CLOSED for {target}: {condition_name}"
+
+        return SDLCEvent(
+            source="newrelic",
+            category=SDLCCategory.OBSERVABILITY,
+            event_type=evt,
+            repository=str(target),
+            actor=SDLCActor(name="newrelic-bot"),
+            payload=raw_payload,
+            health_impact=SDLCHealthImpact(
+                score_delta=delta,
+                risk_level=risk,
+                message=msg
+            )
+        )
+
+
+

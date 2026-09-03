@@ -16,6 +16,7 @@ class SDLCCategory(str, Enum):
     INFRA_HEALTH = "infra_health"
     SECURITY_QUALITY = "security_quality"
     TESTING = "testing"
+    OBSERVABILITY = "observability"
 
 
 class SDLCRiskLevel(str, Enum):
@@ -48,6 +49,11 @@ class SDLCEventType(str, Enum):
     ISSUE_UPDATED = "issue_updated"
     ISSUE_BLOCKED = "issue_blocked"
     
+    # Observability & Monitoring Events
+    INCIDENT_CREATED = "incident_created"
+    INCIDENT_RESOLVED = "incident_resolved"
+    SECURITY_ALERT = "security_alert"
+    
     # Security / Quality / Testing
     QUALITY_GATE_FAILED = "quality_gate_failed"
     TESTS_PASSED = "tests_passed"
@@ -56,6 +62,7 @@ class SDLCEventType(str, Enum):
     
     # Generic Fallback
     GENERIC_SIGNAL = "generic_signal"
+
 
 
 @dataclass
