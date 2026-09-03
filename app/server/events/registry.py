@@ -14,7 +14,11 @@ from app.server.events.normalizer import (
     JenkinsNormalizer,
     CircleCINormalizer,
     GradleNormalizer,
-    PlaywrightNormalizer
+    PlaywrightNormalizer,
+    DatadogNormalizer,
+    SentryNormalizer,
+    PagerDutyNormalizer,
+    NewRelicNormalizer
 )
 
 
@@ -44,6 +48,11 @@ class EventRegistry:
         self.register("gradle", GradleNormalizer())
         self.register("playwright", PlaywrightNormalizer())
         self.register("junit", PlaywrightNormalizer())
+        self.register("datadog", DatadogNormalizer())
+        self.register("sentry", SentryNormalizer())
+        self.register("pagerduty", PagerDutyNormalizer())
+        self.register("newrelic", NewRelicNormalizer())
+
 
 
 
