@@ -48,14 +48,22 @@ Developer Workflow OS turns repository metadata, branch state, release readiness
    ```bash
    pip install -r requirements.txt
    ```
-   *Note: If no `requirements.txt` is present, ensure `flask` and `pytest` are installed:*
-   ```bash
-   pip install flask pytest
-   ```
 
-4. **Optional Integration Environment Variables**:
-   Set credentials in your shell or `.env` file to unlock external adapters:
+4. **Integration Environment Variables**:
+   Copy [`.env.example`](file:///d:/repos/agentic-os/.env.example) to `.env` in the repository root directory and set your credentials to unlock external adapters and webhook verification:
    ```bash
+   cp .env.example .env
+   ```
+   Or set environment variables directly in your shell or `.env` file:
+   ```bash
+   # Webhook HMAC Security Secret
+   $env:WEBHOOK_HMAC_SECRET="your_shared_hmac_secret_key"
+
+   # Cloudflare Workers & D1 Integration
+   $env:CLOUDFLARE_API_TOKEN="your_cloudflare_api_token"
+   $env:CLOUDFLARE_ACCOUNT_ID="your_cloudflare_account_id"
+   $env:CLOUDFLARE_D1_DATABASE_ID="your_d1_database_id"
+
    # GitHub PR & API Integration
    $env:GITHUB_TOKEN="ghp_your_github_token"
 
@@ -63,7 +71,9 @@ Developer Workflow OS turns repository metadata, branch state, release readiness
    $env:JIRA_URL="https://yourcompany.atlassian.net"
    $env:JIRA_API_TOKEN="your_jira_token"
 
-   # Slack Scheduled Digest Alerts
+   # Observability & Chat Integrations
+   $env:DATADOG_API_KEY="your_datadog_api_key"
+   $env:SENTRY_AUTH_TOKEN="your_sentry_token"
    $env:SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
    ```
 
@@ -93,10 +103,37 @@ Open **`http://localhost:5000/`** in any web browser to view the **Visual Comman
   ```powershell
   Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
   ```
-- **macOS / Linux**: Stop the process bound to port `5000`:
-  ```bash
-  lsof -ti :5000 | xargs kill -9
-  ```
+---
+
+## 5. Tool Integration Setup Pages (App-by-App Instructions)
+
+Detailed setup guides for each supported tool integration, covering step-by-step instructions for **both** the third-party application (webhooks, API keys, events) and **Developer Workflow OS** (`.env` config, endpoints, signature verification):
+
+### Source Code Management (SCM)
+- **[GitHub Integration Guide](file:///d:/repos/agentic-os/docs/guides/integrations/github.md)**: Webhooks, Personal Access Tokens, `X-Hub-Signature-256`, and Actions.
+- **[GitLab Integration Guide](file:///d:/repos/agentic-os/docs/guides/integrations/gitlab.md)**: Webhooks, Private Access Tokens, `X-Gitlab-Token`, and Merge Requests.
+
+### Issue Tracking
+- **[Jira Software Integration Guide](file:///d:/repos/agentic-os/docs/guides/integrations/jira.md)**: Cloud API tokens, issue webhooks, and issue-to-code mapping.
+- **[Linear Integration Guide](file:///d:/repos/agentic-os/docs/guides/integrations/linear.md)**: Personal API keys, issue state webhooks, and cycle tracking.
+
+### CI/CD Pipelines & Serverless Edge
+- **[Jenkins Integration Guide](file:///d:/repos/agentic-os/docs/guides/integrations/jenkins.md)**: Pipeline Notification plugin, `Jenkinsfile` post steps, and API tokens.
+- **[GitHub Actions Integration Guide](file:///d:/repos/agentic-os/docs/guides/integrations/github-actions.md)**: Workflow run webhooks, job status step notifications, and build error context.
+- **[Cloudflare Workers & D1 Guide](file:///d:/repos/agentic-os/docs/guides/integrations/cloudflare.md)**: Wrangler CLI setup, Workers edge dispatcher, Workflows, and D1 SQL database initialization.
+
+### Observability & Incident Management
+- **[Datadog Integration Guide](file:///d:/repos/agentic-os/docs/guides/integrations/datadog.md)**: Webhooks integration, monitor alert channels, and release readiness risk scoring.
+- **[Sentry Error Tracking Guide](file:///d:/repos/agentic-os/docs/guides/integrations/sentry.md)**: Internal Integration webhooks, issue exception triggers, and stack trace correlation.
+- **[PagerDuty Integration Guide](file:///d:/repos/agentic-os/docs/guides/integrations/pagerduty.md)**: V3 Webhook subscriptions, User API tokens, and release blocker alerts.
+- **[New Relic Integration Guide](file:///d:/repos/agentic-os/docs/guides/integrations/newrelic.md)**: Applied Intelligence Webhook destinations and APM performance monitoring.
+
+### Chat & Collaboration
+- **[Slack Integration Guide](file:///d:/repos/agentic-os/docs/guides/integrations/slack.md)**: Incoming Webhooks, Block Kit sprint summaries, and automated nightly digests.
+- **[Microsoft Teams Integration Guide](file:///d:/repos/agentic-os/docs/guides/integrations/teams.md)**: Workflows / Incoming Webhook connectors and Adaptive Cards.
+- **[Zoom Webhooks Guide](file:///d:/repos/agentic-os/docs/guides/integrations/zoom.md)**: Marketplace Webhook-Only App, meeting ended events, and cloud recording logs.
+
+---
 
 
 ---
@@ -158,7 +195,7 @@ You can also run standalone Python skills from the command line:
 
 ## 7. Running Automated Tests
 
-To run the complete automated test suite (58 unit and integration tests):
+To run the complete automated test suite (86 unit and integration tests across 14 test suites):
 
 ```bash
 python -m pytest
@@ -166,7 +203,7 @@ python -m pytest
 
 Expected Output:
 ```text
-============================= 58 passed in 18.5s =============================
+============================= 86 passed in 23.4s =============================
 ```
 
 ---
@@ -213,4 +250,5 @@ PORT=5001 python3 -m app.server.run
 - [`CLAUDE.md`](file:///d:/repos/agentic-os/CLAUDE.md): Master agent configuration & routing table.
 - [`CONTEXT.md`](file:///d:/repos/agentic-os/CONTEXT.md): Domain terms, boundaries, and invariants.
 - [`TECHNICAL_ARCHITECTURE.md`](file:///d:/repos/agentic-os/TECHNICAL_ARCHITECTURE.md): Deep module design and architecture specs.
+- [`docs/guides/sdlc-integration-how-to-guide.md`](file:///d:/repos/agentic-os/docs/guides/sdlc-integration-how-to-guide.md): Comprehensive SDLC Tool & Cloudflare integration manual.
 - [`docs/research/arms-design-verification.md`](file:///d:/repos/agentic-os/docs/research/arms-design-verification.md): Full ARMS framework compliance audit report.
