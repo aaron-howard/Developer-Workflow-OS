@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from app.server.adapters.git import GitInspector, SubprocessGitAdapter
+from app.server.adapters.git import GitInspector
+from app.server.release_readiness import ReleaseReadinessAnalyzer
 
 
 def generate_release_notes(
@@ -14,38 +14,6 @@ def generate_release_notes(
     git_adapter: GitInspector | None = None,
 ) -> dict[str, Any]:
     """Draft a concise release note summary from the diff against the base branch."""
-    repo = Path(repo_path)
-    adapter = git_adapter or SubprocessGitAdapter(repo_path)
+    analyzer = ReleaseReadinessAnalyzer(repo_path, git_adapter=git_adapter)
+    return analyzer.generate_release_notes(base_branch=base_branch)
 
-    diff_items = adapter.diff(base_branch, "HEAD")
-    unique_files = [item.path for item in diff_items]
-
-    if not unique_files:
-        highlight_lines = ["No code or docs changes detected against the base branch."]
-        summary = (
-            f"Release notes for {repo.name}: no changes were detected relative to {base_branch}, "
-            "so the draft is intentionally minimal."
-        )
-    else:
-        highlight_lines = []
-        for item in diff_items[:5]:
-            if item.is_code:
-                highlight_lines.append(f"Updated {item.path} to improve runtime behavior and application flow.")
-            elif item.is_doc:
-                highlight_lines.append(f"Refreshed documentation in {item.path} to match the shipped changes.")
-            else:
-                highlight_lines.append(f"Touched {item.path} as part of the current release.")
-
-        summary = (
-            f"Release notes for {repo.name}: the current change set introduces {len(unique_files)} file(s) "
-            f"of work relative to {base_branch}. The most important changes are summarized below."
-        )
-
-    return {
-        "repo_name": repo.name,
-        "repo_path": str(repo),
-        "base_branch": base_branch,
-        "summary": summary,
-        "highlights": highlight_lines,
-        "changed_files": unique_files,
-    }
