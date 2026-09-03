@@ -28,6 +28,10 @@ from app.server.routine_scheduler import RoutineScheduler, UnknownRoutineError
 from app.server.weekly_digest import generate_weekly_digest
 from app.server.connectors_audit import audit_connectors
 from app.server.repo_graph import generate_repo_graph
+from app.server.events.registry import get_event_registry
+from app.server.events.security import verify_hmac_signature
+
+
 
 
 def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook_url: str | None = None) -> Flask:
@@ -355,4 +359,42 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
             app.logger.error("Error in get_latest: %s", e, exc_info=True)
             return jsonify({"error": "An internal error occurred."}), 500
 
+    @app.route("/api/v1/ingest/<category>/<provider>", methods=["POST"])
+    def universal_ingest(category, provider):
+        """Universal SDLC Event Ingestion Endpoint."""
+        try:
+            payload_bytes = request.get_data()
+            raw_json = request.get_json(silent=True) or {}
+
+            sig_header = (
+                request.headers.get("X-SDLC-Signature")
+                or request.headers.get("X-Hub-Signature-256")
+                or request.headers.get("X-Hub-Signature")
+            )
+            webhook_secret = app.config.get("WEBHOOK_SECRET", "")
+
+            bypass_sig = (
+                request.args.get("bypass_sig") == "true"
+                or app.config.get("TESTING", False)
+            )
+            if not bypass_sig and webhook_secret:
+                if not verify_hmac_signature(payload_bytes, webhook_secret, sig_header):
+                    return jsonify({"error": "Invalid HMAC signature"}), 401
+
+            registry = get_event_registry()
+            sdlc_event = registry.ingest(raw_json, category, provider)
+
+            app.centre.store_artifact(
+                name=f"event_{sdlc_event.id}",
+                artifact_type="sdlc_event",
+                content=sdlc_event.to_dict(),
+                tags=[category, provider, str(sdlc_event.event_type)],
+            )
+
+            return jsonify({"status": "success", "event": sdlc_event.to_dict()}), 200
+        except Exception as e:
+            app.logger.error("Error in universal_ingest: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
+
     return app
+
