@@ -6,7 +6,11 @@ from app.server.events.schema import SDLCEvent
 from app.server.events.normalizer import (
     BaseNormalizer,
     GenericWebhookNormalizer,
-    GitHubNormalizer
+    GitHubNormalizer,
+    GitLabNormalizer,
+    AzureDevOpsNormalizer,
+    JiraNormalizer,
+    LinearNormalizer
 )
 
 
@@ -26,6 +30,12 @@ class EventRegistry:
 
     def _register_defaults(self):
         self.register("github", GitHubNormalizer())
+        self.register("gitlab", GitLabNormalizer())
+        self.register("azure_devops", AzureDevOpsNormalizer())
+        self.register("azure", AzureDevOpsNormalizer())
+        self.register("jira", JiraNormalizer())
+        self.register("linear", LinearNormalizer())
+
 
     def register(self, provider: str, normalizer: BaseNormalizer):
         self._normalizers[provider.lower()] = normalizer
