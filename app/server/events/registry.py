@@ -18,7 +18,9 @@ from app.server.events.normalizer import (
     DatadogNormalizer,
     SentryNormalizer,
     PagerDutyNormalizer,
-    NewRelicNormalizer
+    NewRelicNormalizer,
+    MSTeamsNormalizer,
+    ZoomNormalizer
 )
 
 
@@ -52,6 +54,11 @@ class EventRegistry:
         self.register("sentry", SentryNormalizer())
         self.register("pagerduty", PagerDutyNormalizer())
         self.register("newrelic", NewRelicNormalizer())
+        self.register("msteams", MSTeamsNormalizer())
+        self.register("teams", MSTeamsNormalizer())
+        self.register("zoom", ZoomNormalizer())
+        self.register("slack", GenericWebhookNormalizer())
+
 
 
 
