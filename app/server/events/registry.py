@@ -10,7 +10,11 @@ from app.server.events.normalizer import (
     GitLabNormalizer,
     AzureDevOpsNormalizer,
     JiraNormalizer,
-    LinearNormalizer
+    LinearNormalizer,
+    JenkinsNormalizer,
+    CircleCINormalizer,
+    GradleNormalizer,
+    PlaywrightNormalizer
 )
 
 
@@ -35,6 +39,12 @@ class EventRegistry:
         self.register("azure", AzureDevOpsNormalizer())
         self.register("jira", JiraNormalizer())
         self.register("linear", LinearNormalizer())
+        self.register("jenkins", JenkinsNormalizer())
+        self.register("circleci", CircleCINormalizer())
+        self.register("gradle", GradleNormalizer())
+        self.register("playwright", PlaywrightNormalizer())
+        self.register("junit", PlaywrightNormalizer())
+
 
 
     def register(self, provider: str, normalizer: BaseNormalizer):
