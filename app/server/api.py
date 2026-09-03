@@ -26,6 +26,8 @@ from app.server.sprint_recap import (
 from app.server.repo_memory import build_feature_context, index_repo
 from app.server.routine_scheduler import RoutineScheduler, UnknownRoutineError
 from app.server.weekly_digest import generate_weekly_digest
+from app.server.connectors_audit import audit_connectors
+from app.server.repo_graph import generate_repo_graph
 
 
 def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook_url: str | None = None) -> Flask:
@@ -44,6 +46,26 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
         dashboard_path = Path(__file__).resolve().parents[1] / "dashboard" / "index.html"
         return send_file(dashboard_path, mimetype="text/html")
 
+    @app.route("/api/connectors/audit", methods=["GET"])
+    def connectors_audit():
+        """Return audit of connected applications and MCP servers (Applications L1)."""
+        try:
+            result = audit_connectors(app.config["REPO_PATH"], app.config["MEMORY_PATH"])
+            return jsonify(result), 200
+        except Exception as e:
+            app.logger.error("Error in connectors_audit: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
+
+    @app.route("/api/repo/graph", methods=["GET"])
+    def repo_graph():
+        """Return node-link visual memory map for the Visual Second Brain (Memory L3)."""
+        try:
+            result = generate_repo_graph(app.config["REPO_PATH"])
+            return jsonify(result), 200
+        except Exception as e:
+            app.logger.error("Error in repo_graph: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred."}), 500
+
     @app.route("/api/repo/index", methods=["GET"])
     def repo_index():
         """Return repo indexing and workspace map."""
@@ -53,6 +75,7 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
         except Exception as e:
             app.logger.error("Error in repo_index: %s", e, exc_info=True)
             return jsonify({"error": "An internal error occurred."}), 500
+
 
     @app.route("/api/repo/feature", methods=["GET"])
     def repo_feature():
