@@ -39,6 +39,18 @@ A recurring workflow that runs on schedule to keep the operating layer current w
 ### Command centre
 The front door to the operating system: a stable place where the user sees current work, key artifacts, and the most useful actions.
 
+### Universal Event Engine
+The centralized async event dispatch and routing subsystem that ingests normalized events from external engineering tools, validates authentication signatures, and dispatches to registered handler modules.
+
+### HMAC Signature Verification
+The cryptographic authentication mechanism (HMAC-SHA256) used to ensure incoming webhooks originate from authorized external providers before being processed by the system.
+
+### SDLC Integration Adapter
+A standardized adapter module translating external signals (from SCM, CI/CD, Observability, or Chat platforms) into normalized event envelopes consumed by the Event Engine.
+
+### Cloudflare Dispatcher & D1 Store
+The serverless edge dispatcher and relational SQLite store (Cloudflare D1) used for offloading event webhooks and executing cloud-native workflows outside the local environment.
+
 ## Clarified distinctions
 
 ### Feature vs work item
@@ -56,6 +68,15 @@ Release readiness is a judgment about shipping confidence. A release note is a c
 ### Routine vs skill
 A skill is a discrete action a user or system can perform. A routine is a scheduled workflow built from one or more skills or repeated observations.
 
+### Event vs Artifact
+An event is a point-in-time signal emitted by an external system or internal state change. An artifact is a persistent record produced by analyzing one or more events or workspace states.
+
+### Webhook Adapter vs Polling Adapter
+A webhook adapter receives push events via signed HTTP payloads. A polling adapter periodically queries external APIs to pull status changes into the event pipeline.
+
+### Local Repo Memory vs Cloudflare D1 Store
+Local repo memory indexes files and metadata stored within the workspace filesystem. Cloudflare D1 is an edge-replicated SQL store for remote event logging and cross-environment sync.
+
 ## Relationship rules
 
 - A work item may relate to many files, artifacts, and decisions.
@@ -63,6 +84,7 @@ A skill is a discrete action a user or system can perform. A routine is a schedu
 - Repo memory is the source of truth for the system's understanding of the project.
 - The command centre is a view over the project, not the place where the project itself lives.
 - Release readiness is a function of the work that exists, the risk it carries, and the confidence in the review and validation process.
+- Events trigger handlers, which update Repo Memory and may generate Artifacts.
 
 ## Invariants
 
@@ -70,7 +92,8 @@ A skill is a discrete action a user or system can perform. A routine is a schedu
 - A developer should be able to understand what changed without reading the entire repository.
 - A routine should improve clarity, not add more noise.
 - An artifact should be reviewable in one pass and easily discoverable later.
+- Unauthenticated or invalidly signed webhooks must be rejected at the boundary before event handler dispatch.
 
 ## Out of scope
 
-This context does not define specific tools, frameworks, file layouts, or implementation decisions. Those belong elsewhere.
+This context does not define specific third-party API SDKs, internal database table indices, or CSS styling details. Those belong in implementation code and architecture documents.
