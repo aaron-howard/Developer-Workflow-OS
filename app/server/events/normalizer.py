@@ -764,4 +764,73 @@ class NewRelicNormalizer(BaseNormalizer):
         )
 
 
+class MSTeamsNormalizer(BaseNormalizer):
+    """
+    Normalizer for Microsoft Teams Connector Adaptive Cards and Channel Messages.
+    """
+    def normalize(
+        self,
+        raw_payload: Dict[str, Any],
+        category: str,
+        provider: str
+    ) -> SDLCEvent:
+        title = raw_payload.get("title") or raw_payload.get("summary") or "MS Teams Message"
+        text = raw_payload.get("text") or "Channel Notification"
+        user = raw_payload.get("from", {}).get("name") or "teams-user"
+
+        return SDLCEvent(
+            source="msteams",
+            category=SDLCCategory.TICKET,
+            event_type=SDLCEventType.ISSUE_UPDATED,
+            repository="msteams-channel",
+            actor=SDLCActor(name=user),
+            payload=raw_payload,
+            health_impact=SDLCHealthImpact(
+                score_delta=1.0,
+                risk_level=SDLCRiskLevel.LOW,
+                message=f"MS Teams Notification: {title}"
+            )
+        )
+
+
+class ZoomNormalizer(BaseNormalizer):
+    """
+    Normalizer for Zoom Webhooks (meeting started/ended, chat events).
+    """
+    def normalize(
+        self,
+        raw_payload: Dict[str, Any],
+        category: str,
+        provider: str
+    ) -> SDLCEvent:
+        event = raw_payload.get("event") or "meeting.started"
+        object_data = raw_payload.get("payload", {}).get("object") or raw_payload.get("object") or {}
+        topic = object_data.get("topic") or "Developer Sync War-Room"
+
+        if "started" in event:
+            msg = f"Zoom sync/war-room meeting started: '{topic}'"
+            delta = 1.0
+        elif "ended" in event:
+            msg = f"Zoom meeting ended: '{topic}'"
+            delta = 0.0
+        else:
+            msg = f"Zoom event ({event}): '{topic}'"
+            delta = 0.0
+
+        return SDLCEvent(
+            source="zoom",
+            category=SDLCCategory.CODE,
+            event_type=SDLCEventType.GENERIC_SIGNAL,
+            repository=str(topic),
+            actor=SDLCActor(name="zoom-host"),
+            payload=raw_payload,
+            health_impact=SDLCHealthImpact(
+                score_delta=delta,
+                risk_level=SDLCRiskLevel.LOW,
+                message=msg
+            )
+        )
+
+
+
 
