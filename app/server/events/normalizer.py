@@ -409,3 +409,183 @@ class LinearNormalizer(BaseNormalizer):
             )
         )
 
+
+class JenkinsNormalizer(BaseNormalizer):
+    """
+    Normalizer for Jenkins Notification Plugin and Generic Webhook builds.
+    """
+    def normalize(
+        self,
+        raw_payload: Dict[str, Any],
+        category: str,
+        provider: str
+    ) -> SDLCEvent:
+        build = raw_payload.get("build", {})
+        job_name = raw_payload.get("job") or raw_payload.get("name") or build.get("full_url") or "jenkins-job"
+        if isinstance(job_name, str) and "/" in job_name:
+            job_name = job_name.split("/")[-1] or job_name
+
+        build_num = raw_payload.get("build_number") or raw_payload.get("number") or build.get("number") or 1
+        status = (
+            raw_payload.get("status")
+            or raw_payload.get("result")
+            or build.get("status")
+            or build.get("phase")
+            or "SUCCESS"
+        ).upper()
+
+        if status in ("SUCCESS", "SUCCESSFUL", "COMPLETED", "PASSED"):
+            evt = SDLCEventType.BUILD_PASSED
+            delta = 5.0
+            risk = SDLCRiskLevel.LOW
+            msg = f"Jenkins build #{build_num} passed for job '{job_name}'"
+        else:
+            evt = SDLCEventType.BUILD_FAILED
+            delta = -10.0
+            risk = SDLCRiskLevel.HIGH
+            msg = f"Jenkins build #{build_num} failed ({status}) for job '{job_name}'"
+
+        return SDLCEvent(
+            source="jenkins",
+            category=SDLCCategory.BUILD,
+            event_type=evt,
+            repository=str(job_name),
+            actor=SDLCActor(name="jenkins-bot"),
+            payload=raw_payload,
+            health_impact=SDLCHealthImpact(
+                score_delta=delta,
+                risk_level=risk,
+                message=msg
+            )
+        )
+
+
+class CircleCINormalizer(BaseNormalizer):
+    """
+    Normalizer for CircleCI workflow-completed and job-completed events.
+    """
+    def normalize(
+        self,
+        raw_payload: Dict[str, Any],
+        category: str,
+        provider: str
+    ) -> SDLCEvent:
+        workflow = raw_payload.get("workflow", {})
+        pipeline = raw_payload.get("pipeline", {})
+        project = raw_payload.get("project", {})
+        
+        repo_name = project.get("name") or pipeline.get("vcs", {}).get("repo_name") or "circleci-repo"
+        workflow_name = workflow.get("name") or raw_payload.get("type", "workflow")
+        
+        status = (workflow.get("status") or raw_payload.get("status") or "success").lower()
+
+        if status in ("success", "passed"):
+            evt = SDLCEventType.BUILD_PASSED
+            delta = 5.0
+            risk = SDLCRiskLevel.LOW
+            msg = f"CircleCI workflow '{workflow_name}' succeeded in {repo_name}"
+        else:
+            evt = SDLCEventType.BUILD_FAILED
+            delta = -10.0
+            risk = SDLCRiskLevel.HIGH
+            msg = f"CircleCI workflow '{workflow_name}' failed ({status}) in {repo_name}"
+
+        return SDLCEvent(
+            source="circleci",
+            category=SDLCCategory.BUILD,
+            event_type=evt,
+            repository=repo_name,
+            actor=SDLCActor(name="circleci-bot"),
+            payload=raw_payload,
+            health_impact=SDLCHealthImpact(
+                score_delta=delta,
+                risk_level=risk,
+                message=msg
+            )
+        )
+
+
+class GradleNormalizer(BaseNormalizer):
+    """
+    Normalizer for Gradle init plugin build listener telemetry.
+    """
+    def normalize(
+        self,
+        raw_payload: Dict[str, Any],
+        category: str,
+        provider: str
+    ) -> SDLCEvent:
+        project_name = raw_payload.get("projectName") or raw_payload.get("project") or "gradle-project"
+        tasks = raw_payload.get("taskNames", [])
+        duration_ms = raw_payload.get("durationMs", 0)
+        has_failure = bool(raw_payload.get("failure", False))
+
+        task_str = ", ".join(tasks) if isinstance(tasks, list) else str(tasks)
+
+        if has_failure:
+            evt = SDLCEventType.BUILD_FAILED
+            delta = -5.0
+            risk = SDLCRiskLevel.MEDIUM
+            msg = f"Gradle build failed for project '{project_name}' [tasks: {task_str}]"
+        else:
+            evt = SDLCEventType.BUILD_PASSED
+            delta = 3.0
+            risk = SDLCRiskLevel.LOW
+            msg = f"Gradle build passed for project '{project_name}' [tasks: {task_str}] ({duration_ms}ms)"
+
+        return SDLCEvent(
+            source="gradle",
+            category=SDLCCategory.BUILD,
+            event_type=evt,
+            repository=project_name,
+            actor=SDLCActor(name="gradle-runner"),
+            payload=raw_payload,
+            health_impact=SDLCHealthImpact(
+                score_delta=delta,
+                risk_level=risk,
+                message=msg
+            )
+        )
+
+
+class PlaywrightNormalizer(BaseNormalizer):
+    """
+    Normalizer for Playwright and JUnit E2E test execution reports.
+    """
+    def normalize(
+        self,
+        raw_payload: Dict[str, Any],
+        category: str,
+        provider: str
+    ) -> SDLCEvent:
+        passed = int(raw_payload.get("passed", 0))
+        failed = int(raw_payload.get("failed", 0))
+        skipped = int(raw_payload.get("skipped", 0))
+        suite_name = raw_payload.get("suite") or raw_payload.get("project") or "playwright-e2e"
+
+        if failed > 0:
+            evt = SDLCEventType.TESTS_FAILED
+            delta = -12.0
+            risk = SDLCRiskLevel.HIGH
+            msg = f"Playwright E2E suite '{suite_name}' failed: {failed} failed, {passed} passed"
+        else:
+            evt = SDLCEventType.TESTS_PASSED
+            delta = 5.0
+            risk = SDLCRiskLevel.LOW
+            msg = f"Playwright E2E suite '{suite_name}' passed: {passed} passed ({skipped} skipped)"
+
+        return SDLCEvent(
+            source="playwright",
+            category=SDLCCategory.TESTING,
+            event_type=evt,
+            repository=suite_name,
+            actor=SDLCActor(name="playwright-runner"),
+            payload=raw_payload,
+            health_impact=SDLCHealthImpact(
+                score_delta=delta,
+                risk_level=risk,
+                message=msg
+            )
+        )
+
+
