@@ -220,3 +220,144 @@ class CommandCentre:
                 deleted += 1
 
         return deleted
+
+    def get_artifacts_navigation(self) -> dict[str, Any]:
+        """Fetch all artifacts and provide navigation structure using index seam."""
+        artifacts = []
+        # Direct index lookup
+        for art in self.list_artifacts(limit=100):
+            artifacts.append({
+                "name": art.get("name", art["id"]),
+                "type": art.get("type", "unknown"),
+                "created_at": art.get("created_at"),
+                "path": f".memory/artifacts/{art['id']}.json",
+            })
+
+        # Fallback for unindexed raw files created in tests
+        if not artifacts and self.memory_path.exists():
+            for artifact_file in sorted(self.memory_path.glob("*.json"), reverse=True):
+                try:
+                    with artifact_file.open(encoding="utf-8") as f:
+                        data = json.load(f)
+                        if isinstance(data, dict):
+                            artifacts.append({
+                                "name": data.get("name", artifact_file.stem),
+                                "type": data.get("type", "unknown"),
+                                "created_at": data.get("created_at", artifact_file.stat().st_mtime),
+                                "path": str(artifact_file.relative_to(self.memory_path.parent if self.memory_path.parent != self.memory_path else self.memory_path)),
+                            })
+                except (json.JSONDecodeError, OSError):
+                    continue
+
+        return {
+            "artifacts": artifacts,
+            "total_count": len(artifacts),
+        }
+
+    def get_routine_history(self) -> dict[str, Any]:
+        """Fetch routine execution history from memory artifacts."""
+        routine_executions = []
+        if self.memory_path.exists():
+            for history_file in self.memory_path.glob("*routine*"):
+                try:
+                    with history_file.open(encoding="utf-8") as f:
+                        history = json.load(f)
+                        if isinstance(history, dict) and "executions" in history:
+                            for execution in history.get("executions", []):
+                                routine_executions.append({
+                                    "routine": execution.get("routine_name", "unknown"),
+                                    "timestamp": execution.get("timestamp"),
+                                    "status": execution.get("status", "unknown"),
+                                })
+                except (json.JSONDecodeError, OSError):
+                    continue
+
+        return {
+            "routines": routine_executions,
+            "total_executions": len(routine_executions),
+        }
+
+    def generate_sprint_recap(self) -> dict[str, Any]:
+        """Generate comprehensive sprint recap from stored artifacts."""
+        features_implemented = []
+        tasks_completed = []
+
+        for art in self.list_artifacts(limit=200):
+            art_type = art.get("type")
+            art_name = art.get("name", art["id"])
+            if art_type == "feature":
+                features_implemented.append(art_name)
+            elif art_type == "task":
+                tasks_completed.append(art_name)
+
+        if not features_implemented and not tasks_completed and self.memory_path.exists():
+            for artifact_file in sorted(self.memory_path.glob("*.json")):
+                try:
+                    with artifact_file.open(encoding="utf-8") as f:
+                        artifact = json.load(f)
+                        if isinstance(artifact, dict):
+                            if artifact.get("type") == "feature":
+                                features_implemented.append(artifact.get("name", artifact_file.stem))
+                            elif artifact.get("type") == "task":
+                                tasks_completed.append(artifact.get("name", artifact_file.stem))
+                except (json.JSONDecodeError, OSError):
+                    continue
+
+        return {
+            "summary": f"Sprint recap: {len(features_implemented)} features, {len(tasks_completed)} tasks",
+            "features_implemented": features_implemented,
+            "tasks_completed": tasks_completed,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    def validate_feature_parity(self) -> dict[str, Any]:
+        """Validate that planned features match implemented features."""
+        planned_features = [
+            "Implementation Checklist",
+            "Issue-to-Code Mapping",
+            "Dashboard Release Status",
+            "Action Items Integration",
+            "Artifact Navigation",
+            "Routine History",
+        ]
+        implemented_features = []
+
+        for art in self.list_artifacts(limit=200):
+            name = art.get("name", "")
+            if any(planned.lower() in name.lower() for planned in planned_features):
+                implemented_features.append(name)
+
+        if not implemented_features and self.memory_path.exists():
+            for artifact_file in self.memory_path.glob("*.json"):
+                try:
+                    with artifact_file.open(encoding="utf-8") as f:
+                        artifact = json.load(f)
+                        if isinstance(artifact, dict):
+                            name = artifact.get("name", artifact_file.stem)
+                            if any(planned.lower() in name.lower() for planned in planned_features):
+                                implemented_features.append(name)
+                except (json.JSONDecodeError, OSError):
+                    continue
+
+        parity_score = (len(implemented_features) / len(planned_features) * 100) if planned_features else 0
+
+        return {
+            "planned_features": planned_features,
+            "implemented_features": list(set(implemented_features)),
+            "parity_score": round(parity_score, 1),
+            "missing_features": [f for f in planned_features if not any(f.lower() in impl.lower() for impl in implemented_features)],
+        }
+
+    def generate_project_snapshot(self) -> dict[str, Any]:
+        """Generate consolidated snapshot of project state."""
+        nav = self.get_artifacts_navigation()
+        analysis_artifacts = nav.get("artifacts", [])[:20]
+
+        return {
+            "repo_name": self.repo_path.name,
+            "analysis_artifacts": analysis_artifacts,
+            "workflow_status": "active",
+            "total_artifacts": nav.get("total_count", 0),
+            "snapshot_time": datetime.now(timezone.utc).isoformat(),
+        }
+
