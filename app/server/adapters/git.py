@@ -219,3 +219,27 @@ class FakeGitAdapter(GitInspector):
         if isinstance(self._stats, dict):
             return dict(self._stats)
         return self._stats
+
+
+def get_git_adapter(repo_path: str | Path = ".", force_provider: str | None = None) -> GitInspector:
+    """
+    Factory function returning the appropriate GitInspector adapter.
+
+    Pivots to GitHubApiAdapter if SCM_PROVIDER='github', GITHUB_TOKEN is present,
+    or force_provider='github', provided a valid GitHub repo (owner/repo) is detected.
+    Otherwise falls back to local SubprocessGitAdapter.
+    """
+    import os
+    from app.server.adapters.github_api import GitHubApiAdapter, parse_github_repo_nwo
+
+    scm_provider = (force_provider or os.environ.get("SCM_PROVIDER") or "").lower()
+    has_github_token = bool(os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN"))
+    should_use_github = scm_provider == "github" or has_github_token or os.environ.get("USE_GITHUB_API") == "true"
+
+    if should_use_github:
+        repo_nwo = parse_github_repo_nwo(repo_path)
+        if repo_nwo:
+            return GitHubApiAdapter(repo_nwo=repo_nwo, repo_path=str(repo_path))
+
+    return SubprocessGitAdapter(repo_path)
+

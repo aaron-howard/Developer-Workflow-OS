@@ -23,9 +23,9 @@ def test_wrangler_jsonc_manifest(tmp_path):
         content = f.read()
     # Basic structural verification
     assert '"name": "developer-workflow-os"' in content
-    assert '"main": "api/index.py"' in content
-    assert '"database_name": "sdlc_monitoring_db"' in content
-    assert '"class_name": "NightlyDigestWorkflow"' in content
+    assert '"main": "app/cloudflare/worker.js"' in content
+    assert '"database_name": "sdlc-db"' in content
+    assert '"ENVIRONMENT": "production"' in content
 
 
 def test_d1_database_adapter():

@@ -6,10 +6,14 @@ import os
 from pathlib import Path
 from typing import Any
 
-from app.server.adapters.git import SubprocessGitAdapter
+from app.server.adapters.git import GitInspector, SubprocessGitAdapter
 
 
-def audit_connectors(repo_path: str = ".", memory_path: str = ".memory") -> dict[str, Any]:
+def audit_connectors(
+    repo_path: str = ".",
+    memory_path: str = ".memory",
+    git_adapter: GitInspector | None = None,
+) -> dict[str, Any]:
     """
     Audit active application connectors and MCP servers.
     
@@ -18,20 +22,25 @@ def audit_connectors(repo_path: str = ".", memory_path: str = ".memory") -> dict
     """
     connectors: list[dict[str, Any]] = []
 
-    # 1. Git Local VCS Adapter
-    git_adapter = SubprocessGitAdapter(repo_path)
-    branch = git_adapter.current_branch()
-    stats = git_adapter.repo_stats(branch)
+    # 1. Git SCM Adapter (GitHub API or Local VCS Subprocess)
+    active_adapter = git_adapter or SubprocessGitAdapter(repo_path)
+    branch = active_adapter.current_branch()
+    stats = active_adapter.repo_stats(branch)
     commit_count = stats["commit_count"] if isinstance(stats, dict) else stats.commit_count
+
+    is_github_api = hasattr(active_adapter, "repo_nwo")
+    scm_name = f"GitHub API ({getattr(active_adapter, 'repo_nwo', 'Remote')})" if is_github_api else "Git (Local VCS)"
+    scm_type = "rest_api" if is_github_api else "cli"
     
     connectors.append({
         "id": "git",
-        "name": "Git (Local VCS)",
-        "type": "cli",
+        "name": scm_name,
+        "type": scm_type,
         "status": "connected",
         "details": f"Active branch: {branch}, Commits: {commit_count}",
         "tier": "built-in",
     })
+
 
     # 2. GitHub API Connector
     github_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")

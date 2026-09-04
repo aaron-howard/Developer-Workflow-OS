@@ -30,6 +30,7 @@ from app.server.connectors_audit import audit_connectors
 from app.server.repo_graph import generate_repo_graph
 from app.server.events.registry import get_event_registry
 from app.server.events.security import verify_hmac_signature
+from app.server.adapters.git import get_git_adapter
 
 
 
@@ -39,6 +40,7 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
     app = Flask(__name__)
     app.config["REPO_PATH"] = repo_path
     app.config["MEMORY_PATH"] = memory_path
+    app.config["GIT_ADAPTER"] = get_git_adapter(repo_path)
     app.centre = CommandCentre(repo_path=repo_path, memory_path=memory_path)
     app.scheduler = RoutineScheduler(repo_path=repo_path, memory_path=memory_path, slack_webhook_url=slack_webhook_url)
     app.scheduler.install_default_routines()
@@ -60,7 +62,7 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
     def connectors_audit():
         """Return audit of connected applications and MCP servers (Applications L1)."""
         try:
-            result = audit_connectors(app.config["REPO_PATH"], app.config["MEMORY_PATH"])
+            result = audit_connectors(app.config["REPO_PATH"], app.config["MEMORY_PATH"], git_adapter=app.config.get("GIT_ADAPTER"))
             return jsonify(result), 200
         except Exception as e:
             app.logger.error("Error in connectors_audit: %s", e, exc_info=True)
@@ -108,7 +110,7 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
         if not target:
             return jsonify({"error": "target query parameter is required"}), 400
         try:
-            result = summarize_branch(app.config["REPO_PATH"], base, target)
+            result = summarize_branch(app.config["REPO_PATH"], base, target, git_adapter=app.config.get("GIT_ADAPTER"))
             return jsonify(result), 200
         except Exception as e:
             app.logger.error("Error in branch_summary: %s", e, exc_info=True)
@@ -119,7 +121,7 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
         """Return release readiness score and blockers."""
         base = request.args.get("base", "main")
         try:
-            result = assess_release_readiness(app.config["REPO_PATH"], base)
+            result = assess_release_readiness(app.config["REPO_PATH"], base, git_adapter=app.config.get("GIT_ADAPTER"))
             return jsonify(result), 200
         except Exception as e:
             app.logger.error("Error in release_readiness: %s", e, exc_info=True)
@@ -130,7 +132,7 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
         """Return a draft release note summary for the current repo state."""
         base = request.args.get("base", "main")
         try:
-            result = generate_release_notes(app.config["REPO_PATH"], base)
+            result = generate_release_notes(app.config["REPO_PATH"], base, git_adapter=app.config.get("GIT_ADAPTER"))
             return jsonify(result), 200
         except Exception as e:
             app.logger.error("Error in release_notes: %s", e, exc_info=True)
@@ -167,11 +169,12 @@ def create_app(repo_path: str = ".", memory_path: str = ".memory", slack_webhook
         """Return weekly digest and summary."""
         base = request.args.get("base", "main")
         try:
-            result = generate_weekly_digest(app.config["REPO_PATH"], base)
+            result = generate_weekly_digest(app.config["REPO_PATH"], base, git_adapter=app.config.get("GIT_ADAPTER"))
             return jsonify(result), 200
         except Exception as e:
             app.logger.error("Error in weekly_digest_endpoint: %s", e, exc_info=True)
             return jsonify({"error": "An internal error occurred."}), 500
+
 
     @app.route("/api/plan/status", methods=["GET"])
     def plan_status():

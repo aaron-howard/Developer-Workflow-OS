@@ -12,7 +12,14 @@ import argparse
 import sys
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from app.server.api import create_app
+
 
 
 def main():
