@@ -15,8 +15,10 @@ def test_parse_github_repo_nwo_from_env(monkeypatch):
     assert nwo == "aaron-howard/Developer-Workflow-OS"
 
 
-def test_parse_github_repo_nwo_from_git_remote():
+def test_parse_github_repo_nwo_from_git_remote(monkeypatch):
     """Test parsing NWO from local git remote origin URL."""
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    monkeypatch.delenv("GITHUB_REPO", raising=False)
     with patch("subprocess.check_output") as mock_sub:
         mock_sub.return_value = "git@github.com:octocat/Hello-World.git\n"
         nwo = parse_github_repo_nwo(".")
@@ -26,6 +28,7 @@ def test_parse_github_repo_nwo_from_git_remote():
         mock_sub.return_value = "https://github.com/octocat/Spoon-Knife.git\n"
         nwo = parse_github_repo_nwo(".")
         assert nwo == "octocat/Spoon-Knife"
+
 
 
 def make_mock_response(body_bytes: bytes, status_code: int = 200) -> MagicMock:
