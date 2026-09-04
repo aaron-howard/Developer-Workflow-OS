@@ -36,7 +36,6 @@ Deploy serverless edge webhook ingestion, background workflow execution, and rel
    npx wrangler deploy
    ```
 
-
 ---
 
 ## 3. Setup in Developer Workflow OS
@@ -82,4 +81,3 @@ To resolve:
    ```bash
    npx wrangler d1 create sdlc-db
    ```
-
