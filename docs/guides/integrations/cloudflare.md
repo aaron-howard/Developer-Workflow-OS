@@ -8,7 +8,7 @@ Deploy serverless edge webhook ingestion, background workflow execution, and rel
 
 - **Workers Dispatcher**: `app/cloudflare/worker.js` handles edge webhook routing and HMAC validation.
 - **Workflows Engine**: `app/cloudflare/workflows.js` runs asynchronous event processing.
-- **D1 SQL Database**: `app/cloudflare/schema.sql` stores normalized event records.
+- **D1 SQL Database**: `migrations/0001_initial_sdlc_schema.sql` stores normalized event records.
 
 ---
 
@@ -28,13 +28,14 @@ Deploy serverless edge webhook ingestion, background workflow execution, and rel
 
 3. **Execute Database Schema Migration**:
    ```bash
-   npx wrangler d1 execute sdlc-db --file=app/cloudflare/schema.sql
+   npx wrangler d1 execute sdlc-db --remote --file=migrations/0001_initial_sdlc_schema.sql
    ```
 
 4. **Deploy Cloudflare Worker**:
    ```bash
    npx wrangler deploy
    ```
+
 
 ---
 
@@ -60,3 +61,25 @@ Expected output:
 ```json
 {"status": "healthy", "service": "Cloudflare SDLC Event Worker"}
 ```
+
+---
+
+## 5. Troubleshooting Placeholder Environment Variables
+
+If `wrangler login` or `wrangler d1 create` fails with error code `7003` (`Could not route to /client/v4/accounts/your_cloudflare_account_id/d1/database`), it is because `CLOUDFLARE_ACCOUNT_ID` or `CLOUDFLARE_API_TOKEN` in `.env` is set to placeholder strings.
+
+To resolve:
+1. **Unset placeholder environment variables in your terminal session**:
+   ```pwsh
+   Remove-Item Env:\CLOUDFLARE_API_TOKEN -ErrorAction SilentlyContinue
+   Remove-Item Env:\CLOUDFLARE_ACCOUNT_ID -ErrorAction SilentlyContinue
+   ```
+2. **Authenticate via OAuth**:
+   ```bash
+   npx wrangler login
+   ```
+3. **Create the D1 database**:
+   ```bash
+   npx wrangler d1 create sdlc-db
+   ```
+

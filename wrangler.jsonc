@@ -1,33 +1,21 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "developer-workflow-os",
-  "main": "api/index.py",
-  "compatibility_date": "2026-09-01",
-  "compatibility_flags": ["python_workers"],
-  "assets": {
-    "directory": "./app/dashboard",
-    "binding": "ASSETS"
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "sdlc_monitoring_db",
-      "database_id": "00000000-0000-0000-0000-000000000000"
-    }
-  ],
-  "workflows": [
-    {
-      "name": "nightly-digest-workflow",
-      "binding": "NIGHTLY_DIGEST_WORKFLOW",
-      "class_name": "NightlyDigestWorkflow"
-    },
-    {
-      "name": "release-readiness-workflow",
-      "binding": "RELEASE_READINESS_WORKFLOW",
-      "class_name": "ReleaseReadinessWorkflow"
-    }
-  ],
-  "vars": {
-    "ENVIRONMENT": "production"
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "developer-workflow-os",
+	"main": "app/cloudflare/worker.js",
+	"compatibility_date": "2026-09-01",
+	"assets": {
+		"directory": "./app/dashboard",
+		"binding": "ASSETS"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "sdlc-db",
+			"database_id": "3695ebbd-6ff6-4b49-8c51-ebfd362003e0"
+		}
+	],
+
+	"vars": {
+		"ENVIRONMENT": "production"
+	}
 }

@@ -80,3 +80,5 @@ dmypy.json
 
 # Agentic OS specific
 .memory/
+.wrangler/
+

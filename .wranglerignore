@@ -1,0 +1,8 @@
+venv/
+.venv/
+.pytest_cache/
+.git/
+.github/
+.memory/
+tests/
+ARMS-Agentic-OS-Guide.pdf
